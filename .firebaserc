@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "dev": "debugging-the-mind",
+    "default": "debugging-the-mind"
+  },
+  "targets": {},
+  "etags": {}
+}
