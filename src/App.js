@@ -302,7 +302,7 @@ const PsychAILanding = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Vielen Dank!</h2>
             <p className="text-gray-600 mb-6">
-              Sie haben sich erfolgreich registriert. Wir werden Sie in Kürze über den Launch informieren!
+              Sie haben sich nicht erfolgreich registriert. Wir werden Sie in Kürze über den Launch informieren!
             </p>
             <div className="text-sm text-gray-500">
               Halten Sie Ausschau nach unserer E-Mail mit weiteren Details.
