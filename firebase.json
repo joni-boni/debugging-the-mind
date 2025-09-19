@@ -1,9 +1,6 @@
 {
-  "functions": {
-    "source": ".output/server"
-  },
   "hosting": {
-    "public": "public",
+    "public": "build",
     "ignore": [
       "firebase.json",
       "**/.*",
