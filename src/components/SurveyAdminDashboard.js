@@ -1,34 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, Mail, TrendingUp, Database, RefreshCw, Download } from 'lucide-react';
-import wordPressSurveyService from '../services/wordPressSurveyService';
+import { Users, Mail, TrendingUp, Database, RefreshCw, Download, Trash2 } from 'lucide-react';
+import supabaseAdminService from '../services/supabaseAdminService';
 
 const SurveyAdminDashboard = () => {
   const [statistics, setStatistics] = useState(null);
   const [responses, setResponses] = useState([]);
+  const [waitlist, setWaitlist] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [syncStatus, setSyncStatus] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [activeTab, setActiveTab] = useState('overview'); // overview, responses, waitlist
 
   // Colors for charts
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658'];
 
   useEffect(() => {
     loadDashboardData();
+    
+    // Real-time updates von Supabase
+    const unsubscribe = supabaseAdminService.subscribeToChanges(() => {
+      loadDashboardData();
+    });
+
+    return () => unsubscribe();
   }, [currentPage]);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Load statistics and responses in parallel
-      const [statsData, responsesData] = await Promise.all([
-        wordPressSurveyService.getSurveyStatistics(),
-        wordPressSurveyService.getSurveyResponses(currentPage, 10)
+      // Load statistics, responses and waitlist in parallel
+      const [statsData, responsesData, waitlistData] = await Promise.all([
+        supabaseAdminService.getDashboardStatistics(),
+        supabaseAdminService.getSurveyResponses(currentPage, 10),
+        supabaseAdminService.getWaitlistData(1, 50) // Top 50 waitlist entries
       ]);
 
       setStatistics(statsData);
       setResponses(responsesData.responses || []);
+      setWaitlist(waitlistData.waitlist || []);
       setTotalPages(responsesData.totalPages || 0);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -37,45 +47,90 @@ const SurveyAdminDashboard = () => {
     }
   };
 
-  const handleSync = async () => {
-    setSyncStatus('syncing');
-    try {
-      const result = await wordPressSurveyService.syncPendingSurveys();
-      setSyncStatus(`synced-${result.synced}`);
-      if (result.synced > 0) {
-        loadDashboardData(); // Reload data after sync
+  const handleDeleteResponse = async (id) => {
+    if (window.confirm('Sind Sie sicher, dass Sie diese Antwort löschen möchten?')) {
+      try {
+        await supabaseAdminService.deleteSurveyResponse(id);
+        loadDashboardData();
+      } catch (error) {
+        console.error('Error deleting response:', error);
+        alert('Fehler beim Löschen der Antwort');
       }
-    } catch (error) {
-      setSyncStatus('error');
-      console.error('Sync error:', error);
     }
   };
 
-  const exportToCsv = () => {
-    if (!responses.length) return;
-    
-    const headers = ['Date', 'Email', 'Age', 'Gender', 'Demographics', 'Pets', 'Motivation'];
-    const csvData = responses.map(response => [
-      new Date(response.created_at).toLocaleDateString(),
-      response.email || '',
-      response.age || '',
-      response.gender || '',
-      response.demographics || '',
-      response.pets ? response.pets.replace(/"/g, '') : '',
-      response.motivation || ''
-    ]);
-    
-    const csvContent = [headers, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `survey-responses-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const handleDeleteWaitlistEntry = async (id) => {
+    if (window.confirm('Sind Sie sicher, dass Sie diesen Wartelisten-Eintrag löschen möchten?')) {
+      try {
+        await supabaseAdminService.deleteWaitlistEntry(id);
+        loadDashboardData();
+      } catch (error) {
+        console.error('Error deleting waitlist entry:', error);
+        alert('Fehler beim Löschen des Wartelisten-Eintrags');
+      }
+    }
+  };
+
+  const exportSurveyToCsv = async () => {
+    try {
+      const data = await supabaseAdminService.exportSurveyData();
+      if (!data.length) return;
+      
+      const headers = ['Date', 'Email', 'Age', 'Gender', 'Demographics', 'Pets', 'Motivation'];
+      const csvData = data.map(response => [
+        new Date(response.created_at).toLocaleDateString(),
+        response.email || '',
+        response.age || '',
+        response.gender || '',
+        response.demographics || '',
+        Array.isArray(response.pets) ? response.pets.join(', ') : '',
+        Array.isArray(response.motivation) ? response.motivation.join(', ') : ''
+      ]);
+      
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `survey-responses-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Fehler beim Exportieren');
+    }
+  };
+
+  const exportWaitlistToCsv = async () => {
+    try {
+      const data = await supabaseAdminService.exportWaitlistData();
+      if (!data.length) return;
+      
+      const headers = ['Date', 'Email', 'Survey Data'];
+      const csvData = data.map(entry => [
+        new Date(entry.created_at).toLocaleDateString(),
+        entry.email || '',
+        JSON.stringify(entry.survey_data || {})
+      ]);
+      
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `waitlist-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Fehler beim Exportieren');
+    }
   };
 
   // Transform data for charts with safe fallbacks
@@ -130,8 +185,35 @@ const SurveyAdminDashboard = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Survey Dashboard</h1>
-          <p className="mt-2 text-gray-600">Übersicht über alle Survey-Antworten und Statistiken</p>
+          <h1 className="text-3xl font-bold text-gray-900">Supabase Admin Dashboard</h1>
+          <p className="mt-2 text-gray-600">Real-time Übersicht über Survey-Antworten und Warteliste</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            {[
+              { id: 'overview', label: 'Übersicht', icon: TrendingUp },
+              { id: 'responses', label: 'Survey Antworten', icon: Users },
+              { id: 'waitlist', label: 'Warteliste', icon: Mail }
+            ].map(tab => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mr-2" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Action Bar */}
@@ -146,36 +228,22 @@ const SurveyAdminDashboard = () => {
           
           <div className="flex space-x-3">
             <button
-              onClick={handleSync}
-              disabled={syncStatus === 'syncing'}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-            >
-              <Database className="w-4 h-4 mr-2" />
-              {syncStatus === 'syncing' ? 'Synchronisiere...' : 'Sync Pending'}
-            </button>
-            
-            <button
-              onClick={exportToCsv}
+              onClick={exportSurveyToCsv}
               className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              Export Survey CSV
+            </button>
+            
+            <button
+              onClick={exportWaitlistToCsv}
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Warteliste CSV
             </button>
           </div>
         </div>
-
-        {/* Sync Status */}
-        {syncStatus && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            syncStatus === 'syncing' ? 'bg-blue-50 text-blue-800' :
-            syncStatus.startsWith('synced') ? 'bg-green-50 text-green-800' :
-            'bg-red-50 text-red-800'
-          }`}>
-            {syncStatus === 'syncing' && 'Synchronisiere lokale Daten...'}
-            {syncStatus.startsWith('synced') && `${syncStatus.split('-')[1]} Antworten erfolgreich synchronisiert`}
-            {syncStatus === 'error' && 'Fehler bei der Synchronisation'}
-          </div>
-        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
@@ -210,11 +278,11 @@ const SurveyAdminDashboard = () => {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">
-                      E-Mail Adressen
+                      Warteliste
                     </dt>
                     <dd>
                       <div className="text-lg font-medium text-gray-900">
-                        {responses.filter(r => r.email).length}
+                        {statistics?.totalWaitlist || 0}
                       </div>
                     </dd>
                   </dl>
@@ -236,8 +304,8 @@ const SurveyAdminDashboard = () => {
                     </dt>
                     <dd>
                       <div className="text-lg font-medium text-gray-900">
-                        {statistics?.totalResponses ? 
-                          ((responses.filter(r => r.email).length / statistics.totalResponses) * 100).toFixed(1) 
+                        {statistics?.totalResponses && statistics?.totalWaitlist ? 
+                          ((statistics.totalWaitlist / (statistics.totalResponses + statistics.totalWaitlist)) * 100).toFixed(1) 
                           : 0}%
                       </div>
                     </dd>
@@ -270,143 +338,216 @@ const SurveyAdminDashboard = () => {
           </div>
         </div>
 
-        {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Age Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Altersverteilung</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={ageChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="age" />
-                <YAxis />
-                <Tooltip formatter={(value, name) => [value, 'Anzahl']} />
-                <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
 
-          {/* Gender Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Geschlechterverteilung</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={genderChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({name, percentage}) => `${name} (${percentage}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {genderChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* Charts Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Demographics Distribution */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Demografieverteilung</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={demographicsChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({name, percentage}) => `${name} (${percentage}%)`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {demographicsChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Charts Row 1 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Age Distribution */}
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Altersverteilung</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={ageChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="age" />
+                    <YAxis />
+                    <Tooltip formatter={(value, name) => [value, 'Anzahl']} />
+                    <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-          {/* Motivation Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold mb-4">Top Motivationen/Ziele</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={motivationChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="motivation" />
-                <YAxis />
-                <Tooltip formatter={(value, name) => [value, 'Anzahl']} />
-                <Bar dataKey="count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+              {/* Gender Distribution */}
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Geschlechterverteilung</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={genderChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percentage}) => `${name} (${percentage}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {genderChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-        {/* Recent Responses */}
-        <div className="bg-white rounded-lg shadow-sm">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold">Neueste Antworten</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Datum
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    E-Mail
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Alter
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Geschlecht
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Demographics
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Haustiere
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {responses.map((response, index) => (
-                  <tr key={response.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(response.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {response.email || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {response.age || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {response.gender || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {response.demographics || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {response.pets ? response.pets.replace(/"/g, '') : 'N/A'}
-                    </td>
+            {/* Charts Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Demographics Distribution */}
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Demografieverteilung</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={demographicsChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({name, percentage}) => `${name} (${percentage}%)`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {demographicsChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Motivation Chart */}
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Top Motivationen/Ziele</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={motivationChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="motivation" />
+                    <YAxis />
+                    <Tooltip formatter={(value, name) => [value, 'Anzahl']} />
+                    <Bar dataKey="count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Survey Responses Tab */}
+        {activeTab === 'responses' && (
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">Survey Antworten</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Datum
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      E-Mail
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Alter
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Geschlecht
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Demographics
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Haustiere
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aktionen
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {responses.map((response, index) => (
+                    <tr key={response.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(response.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {response.email || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {response.age || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {response.gender || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {response.demographics || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {Array.isArray(response.pets) ? response.pets.join(', ') : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <button
+                          onClick={() => handleDeleteResponse(response.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
+        )}
+
+        {/* Waitlist Tab */}
+        {activeTab === 'waitlist' && (
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">Warteliste</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Datum
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      E-Mail
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Survey Daten
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Aktionen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {waitlist.map((entry, index) => (
+                    <tr key={entry.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(entry.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {entry.email || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                        {entry.survey_data ? JSON.stringify(entry.survey_data).substring(0, 100) + '...' : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <button
+                          onClick={() => handleDeleteWaitlistEntry(entry.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
           
           {/* Pagination */}
           {totalPages > 1 && (
@@ -434,7 +575,33 @@ const SurveyAdminDashboard = () => {
               </div>
             </div>
           )}
-        </div>
+        
+        {/* Pagination - nur für responses tab */}
+        {activeTab === 'responses' && totalPages > 1 && (
+          <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 mt-6 rounded-lg">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-700">
+                Seite {currentPage} von {totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Zurück
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 border rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Weiter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

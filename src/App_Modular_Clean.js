@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronRight, Brain, Shield, Users, Star, ArrowRight, CheckCircle, Heart, Book, BarChart3 } from 'lucide-react';
-import WordPressBlogDemo from './components/WordPressBlogDemo';
-import SurveyAdminDashboard from './components/SurveyAdminDashboard';
+import React, { useState, useEffect } from 'react';
+import { Brain, Shield, Users, Star, CheckCircle } from 'lucide-react';
 import { 
   SurveyContainer, 
   SingleChoiceQuestion, 
@@ -9,53 +7,61 @@ import {
   EmailInputQuestion, 
   StaticPageQuestion 
 } from './components/SurveyComponents';
-import { SURVEY_CONFIG, getSurveyStep, formatAnswersForWordPress } from './config/surveyConfig';
-import wordPressSurveyService from './services/wordPressSurveyService';
+import { supabase, addToWaitlist, saveSurveyData } from './config/supabase';
 
 const PsychAILanding = () => {
   const [currentStep, setCurrentStep] = useState('landing');
   const [answers, setAnswers] = useState({});
-  const [showBlog, setShowBlog] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+
 
   const updateAnswer = (key, value) => {
     setAnswers(prev => ({ ...prev, [key]: value }));
   };
 
-  const nextStep = (stepName) => {
+  const nextStep = React.useCallback((stepName) => {
     setCurrentStep(stepName);
-  };
+  }, []);
 
-  const prevStep = () => {
+  const prevStep = React.useCallback(() => {
     const stepOrder = ['landing', 'age', 'gender', 'demographics', 'pets', 'tests', 'motivation', 'purchase', 'success'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
     }
-  };
+  }, [currentStep]);
+
+  const handleEmailChange = React.useCallback((newEmail) => {
+    setEmail(newEmail);
+  }, []);
 
   const handleFinalSubmit = async () => {
+    if (!email) return; // Safety check
+    
     setIsSubmitting(true);
     try {
-      const surveyData = formatAnswersForWordPress({ ...answers, email });
-      console.log('Survey Results:', surveyData);
+      // Beide Aktionen parallel ausführen
+      const surveyData = { ...answers, email };
       
-      // WordPress API Integration
-      await wordPressSurveyService.submitSurveyResponse(surveyData);
+      await Promise.all([
+        // E-Mail zur Warteliste hinzufügen
+        addToWaitlist(email, answers),
+        // Survey-Daten strukturiert speichern
+        saveSurveyData(surveyData)
+      ]);
       
-      // Newsletter subscription is included in the survey response
-      console.log('Survey submitted successfully, newsletter subscription included');
+      console.log('Survey Results submitted to Supabase:', surveyData);
       
-      alert('🎉 Vielen Dank! Ihre Antworten wurden erfolgreich gespeichert.');
+      alert('🎉 Vielen Dank! Ihre Antworten wurden erfolgreich in Supabase gespeichert.');
       setCurrentStep('thankyou');
     } catch (error) {
-      console.error('Error submitting survey:', error);
+      console.error('Error submitting to Supabase:', error);
       
       // Lokale Speicherung als Fallback
       try {
-        const surveyData = formatAnswersForWordPress({ ...answers, email });
+        const surveyData = { ...answers, email };
         const existingData = JSON.parse(localStorage.getItem('pendingSurveyResponses') || '[]');
         existingData.push({
           ...surveyData,
@@ -77,38 +83,20 @@ const PsychAILanding = () => {
     }
   };
 
-  // Global Admin Navigation Component - jetzt als fixe Position
-  const GlobalAdminNav = () => (
-    <div className="fixed top-4 right-4 z-50">
-      <button
-        onClick={() => setShowAdmin(true)}
-        className="flex items-center bg-green-600 text-white px-3 py-2 rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 text-sm"
-      >
-        <BarChart3 className="w-4 h-4 mr-1" />
-        Admin
-      </button>
-    </div>
-  );
+
 
   // Enhanced Landing Component mit modularen Komponenten
   const LandingPage = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Navigation */}
       <nav className="absolute top-0 right-0 p-6 flex space-x-3">
-        <button
-          onClick={() => setShowBlog(true)}
-          className="flex items-center bg-white px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-gray-700 hover:text-blue-600"
-        >
-          <Book className="w-4 h-4 mr-2" />
-          Blog
-        </button>
-        <button
-          onClick={() => setShowAdmin(true)}
-          className="flex items-center bg-white px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-gray-700 hover:text-green-600"
-        >
-          <BarChart3 className="w-4 h-4 mr-2" />
-          Admin
-        </button>
+        {/* Supabase Status Anzeige */}
+        <div className="flex items-center bg-white px-3 py-2 rounded-full shadow-lg text-xs">
+          <div className={`w-2 h-2 rounded-full mr-2 ${supabase ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-gray-600">
+            {supabase ? 'Supabase verbunden' : 'Offline'}
+          </span>
+        </div>
       </nav>
       
       <SurveyContainer currentStep={1} totalSteps={8}>
@@ -188,7 +176,6 @@ const PsychAILanding = () => {
   // Age Selection mit modularen Komponenten
   const AgeStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={2} totalSteps={8}>
         <SingleChoiceQuestion
           title="Wie alt sind Sie?"
@@ -212,7 +199,6 @@ const PsychAILanding = () => {
   // Gender Selection
   const GenderStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={3} totalSteps={8}>
         <SingleChoiceQuestion
           title="Welches Geschlecht haben Sie?"
@@ -234,7 +220,6 @@ const PsychAILanding = () => {
   // Demographic mit modularen Komponenten
   const DemographicStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={4} totalSteps={8}>
         <SingleChoiceQuestion
           title="Was beschreibt Sie am besten?"
@@ -259,7 +244,6 @@ const PsychAILanding = () => {
   // Pets mit modularen Komponenten
   const PetsStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={4} totalSteps={8}>
         <MultipleChoiceQuestion
           title="Haben Sie Haustiere?"
@@ -286,7 +270,6 @@ const PsychAILanding = () => {
   // Tests Placeholder mit modularen Komponenten
   const TestStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={5} totalSteps={8}>
         <StaticPageQuestion
           title="Ihre Tests starten gleich! 🧪"
@@ -315,7 +298,6 @@ const PsychAILanding = () => {
   // Motivation mit modularen Komponenten
   const MotivationStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={6} totalSteps={8}>
         <MultipleChoiceQuestion
           title="Was möchten Sie erreichen?"
@@ -344,7 +326,6 @@ const PsychAILanding = () => {
   // Purchase mit modularen Komponenten
   const PurchaseStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={7} totalSteps={8}>
         <StaticPageQuestion
           title="Perfekt! 🎯"
@@ -398,14 +379,39 @@ const PsychAILanding = () => {
   // Success/Email Collection mit modularen Komponenten
   const SuccessStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={8} totalSteps={8}>
         <EmailInputQuestion
           title="Aufgrund der hohen Nachfrage nur noch Wartelistenplätze 📧"
           subtitle="Wir befinden uns aktuell in der Beta-Phase. Geben Sie Ihre E-Mail-Adresse ein, um sich für die Warteliste und Newsletter anzumelden."
-          email={email}
-          onEmailChange={setEmail}
-          onSubmit={handleFinalSubmit}
+          initialEmail={email}
+          onSubmit={async (userEmail) => {
+            if (!userEmail) return;
+            
+            setEmail(userEmail);
+            setIsSubmitting(true);
+            
+            try {
+              // Beide Aktionen parallel ausführen
+              const surveyData = { ...answers, email: userEmail };
+              
+              await Promise.all([
+                // E-Mail zur Warteliste hinzufügen
+                addToWaitlist(userEmail, answers),
+                // Survey-Daten strukturiert speichern
+                saveSurveyData(surveyData)
+              ]);
+              
+              console.log('Survey Results submitted to Supabase:', surveyData);
+              
+              alert('🎉 Vielen Dank! Ihre Antworten wurden erfolgreich in Supabase gespeichert.');
+              setCurrentStep('thankyou');
+            } catch (error) {
+              console.error('Error submitting to Supabase:', error);
+              alert('⚠️ Es gab einen Fehler beim Speichern. Bitte versuchen Sie es erneut.');
+            }
+            
+            setIsSubmitting(false);
+          }}
           onBack={prevStep}
           showBack={true}
           submitButtonText="Zugang erhalten"
@@ -418,7 +424,6 @@ const PsychAILanding = () => {
   // Thank You Page
   const ThankYouStep = () => (
     <div>
-      <GlobalAdminNav />
       <SurveyContainer currentStep={8} totalSteps={8}>
         <StaticPageQuestion
           title="Vielen Dank! 🎉"
@@ -434,12 +439,7 @@ const PsychAILanding = () => {
               <div className="text-sm text-gray-500">
                 Halten Sie Ausschau nach unserer E-Mail mit weiteren Details.
               </div>
-              <button
-                onClick={() => setShowBlog(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Zum Blog →
-              </button>
+
             </div>
           }
           customButton={null} // Kein Standard Button
@@ -476,35 +476,7 @@ const PsychAILanding = () => {
     }
   };
 
-  // Admin Dashboard Toggle
-  if (showAdmin) {
-    return (
-      <div className="font-sans">
-        <button
-          onClick={() => setShowAdmin(false)}
-          className="fixed top-4 left-4 z-50 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-green-700 transition-colors"
-        >
-          ← Zurück zur App
-        </button>
-        <SurveyAdminDashboard />
-      </div>
-    );
-  }
 
-  // Blog Toggle
-  if (showBlog) {
-    return (
-      <div className="font-sans">
-        <button
-          onClick={() => setShowBlog(false)}
-          className="fixed top-4 left-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          ← Zurück zur App
-        </button>
-        <WordPressBlogDemo />
-      </div>
-    );
-  }
 
   return (
     <div className="font-sans">

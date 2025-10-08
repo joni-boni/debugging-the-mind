@@ -193,23 +193,27 @@ export const MultipleChoiceQuestion = ({
   );
 };
 
-// Email Input Component
+// Email Input Component - Komplett isolierter State
 export const EmailInputQuestion = ({ 
   title, 
   subtitle, 
-  email, 
-  onEmailChange, 
+  initialEmail = '',
   onSubmit, 
   onBack,
   showBack = true,
   submitButtonText = "Absenden",
   isSubmitting = false
 }) => {
+  const [email, setEmail] = React.useState(initialEmail);
   const [showValidation, setShowValidation] = React.useState(false);
   const [hasBlurred, setHasBlurred] = React.useState(false);
   
   const isValidEmail = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const shouldShowError = (showValidation || hasBlurred) && email && !isValidEmail;
+
+  const handleEmailChange = (value) => {
+    setEmail(value);
+  };
 
   const handleBlur = () => {
     setHasBlurred(true);
@@ -219,7 +223,7 @@ export const EmailInputQuestion = ({
   const handleSubmit = () => {
     setShowValidation(true);
     if (isValidEmail) {
-      onSubmit();
+      onSubmit(email); // Pass email to parent
     }
   };
 
@@ -232,10 +236,11 @@ export const EmailInputQuestion = ({
         <input
           type="email"
           value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
+          onChange={(e) => handleEmailChange(e.target.value)}
           onBlur={handleBlur}
           placeholder="deine@email.com"
           className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors text-lg"
+          autoComplete="email"
         />
         {shouldShowError && (
           <p className="text-red-500 text-sm mt-2">Bitte gib eine gültige E-Mail-Adresse ein</p>

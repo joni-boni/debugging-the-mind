@@ -85,20 +85,29 @@ export const signOut = async () => {
 }
 
 /**
- * Speichert Survey-Antworten in der Datenbank
+ * Speichert Survey-Antworten strukturiert in der Datenbank
  */
 export const saveSurveyData = async (surveyData) => {
   const user = await getCurrentUser()
   
+  // Strukturierte Daten aus surveyData extrahieren
+  const structuredData = {
+    user_id: user?.id,
+    email: surveyData.email,
+    age: surveyData.age,
+    gender: surveyData.gender,
+    demographics: surveyData.demographics,
+    pets: surveyData.pets || [],
+    motivation: surveyData.motivation || [],
+    additional_data: {
+      // Alle anderen Daten als JSON speichern
+      ...surveyData
+    }
+  }
+  
   const { data, error } = await supabase
     .from('survey_responses')
-    .insert([
-      {
-        user_id: user?.id,
-        survey_data: surveyData,
-        created_at: new Date().toISOString()
-      }
-    ])
+    .insert([structuredData])
   
   if (error) {
     throw error
