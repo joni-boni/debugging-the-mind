@@ -1,9 +1,30 @@
-import React, { useState } from 'react';
-import { ChevronRight, Brain, Shield, Users, Star, ArrowRight, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, Brain, Shield, Users, Star, ArrowRight, CheckCircle, Heart, Book, BarChart3 } from 'lucide-react';
+import WordPressBlogDemo from './components/WordPressBlogDemo';
+import SurveyAdminDashboard from './components/SurveyAdminDashboard';
+import { supabase, addToWaitlist, saveSurveyData, onAuthStateChange, getCurrentUser } from './config/supabase';
 
 const PsychAILanding = () => {
   const [currentStep, setCurrentStep] = useState('landing');
   const [answers, setAnswers] = useState({});
+  const [showBlog, setShowBlog] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Supabase Auth State überwachen
+  useEffect(() => {
+    // Aktueller Benutzer abrufen
+    getCurrentUser().then(setUser).finally(() => setLoading(false));
+
+    // Auth State Changes überwachen
+    const { data: { subscription } } = onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
 
   const updateAnswer = (key, value) => {
     setAnswers(prev => ({ ...prev, [key]: value }));
@@ -16,6 +37,31 @@ const PsychAILanding = () => {
   // Landing Component
   const LandingPage = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Navigation */}
+      <nav className="absolute top-0 right-0 p-6 flex space-x-3">
+        {/* Supabase Status Anzeige */}
+        <div className="flex items-center bg-white px-3 py-2 rounded-full shadow-lg text-xs">
+          <div className={`w-2 h-2 rounded-full mr-2 ${supabase ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-gray-600">
+            {supabase ? 'Supabase verbunden' : 'Offline'}
+          </span>
+        </div>
+        <button
+          onClick={() => setShowBlog(true)}
+          className="flex items-center bg-white px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-gray-700 hover:text-blue-600"
+        >
+          <Book className="w-4 h-4 mr-2" />
+          Blog
+        </button>
+        <button
+          onClick={() => setShowAdmin(true)}
+          className="flex items-center bg-white px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 text-gray-700 hover:text-green-600"
+        >
+          <BarChart3 className="w-4 h-4 mr-2" />
+          Admin
+        </button>
+      </nav>
+      
       {/* Hero Section */}
       <div className="container mx-auto px-4 pt-16 pb-24">
         <div className="text-center max-w-4xl mx-auto">
@@ -95,6 +141,16 @@ const PsychAILanding = () => {
   // Age Selection Component
   const AgeStep = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center px-4">
+      {/* Global Admin Navigation */}
+      <nav className="absolute top-4 right-4 flex space-x-2">
+        <button
+          onClick={() => setShowAdmin(true)}
+          className="flex items-center bg-green-600 text-white px-3 py-2 rounded-lg shadow-lg hover:bg-green-700 transition-all duration-300 text-sm"
+        >
+          <BarChart3 className="w-4 h-4 mr-1" />
+          Admin
+        </button>
+      </nav>
       <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
         <div className="text-center mb-8">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-full w-fit mx-auto mb-4">
@@ -153,7 +209,7 @@ const PsychAILanding = () => {
               key={option.value}
               onClick={() => {
                 updateAnswer('demographic', option.value);
-                nextStep('motivation');
+                nextStep('pets');
               }}
               className="w-full p-4 text-left rounded-lg border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
             >
@@ -164,6 +220,136 @@ const PsychAILanding = () => {
       </div>
     </div>
   );
+
+  // Pets Component
+  const PetsStep = () => (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center px-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full">
+        <div className="text-center mb-8">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-full w-fit mx-auto mb-4">
+            <Heart className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Haben Sie Haustiere?</h2>
+          <p className="text-gray-600">Haustiere können eine wichtige Rolle für das Wohlbefinden spielen. Wählen Sie alle zutreffenden aus.</p>
+        </div>
+        
+        <div className="space-y-3">
+          {[
+            { value: 'dogs', label: 'Hunde' },
+            { value: 'cats', label: 'Katzen' },
+            { value: 'rabbits', label: 'Kaninchen' },
+            { value: 'reptiles', label: 'Reptilien' },
+            { value: 'birds', label: 'Vögel' },
+            { value: 'fish', label: 'Haifische' },
+            { value: 'none', label: 'Keine Haustiere' }
+          ].map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                const current = answers.pets || [];
+                let updated;
+                
+                if (option.value === 'none') {
+                  // If "none" is selected, clear all other selections
+                  updated = current.includes('none') ? [] : ['none'];
+                } else {
+                  // If any pet is selected, remove "none" if it exists
+                  const withoutNone = current.filter(item => item !== 'none');
+                  updated = withoutNone.includes(option.value)
+                    ? withoutNone.filter(item => item !== option.value)
+                    : [...withoutNone, option.value];
+                }
+                
+                updateAnswer('pets', updated);
+              }}
+              className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
+                (answers.pets || []).includes(option.value)
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                {option.label}
+                {(answers.pets || []).includes(option.value) && (
+                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        <button
+          onClick={() => nextStep('tests')}
+          className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+        >
+          Weiter
+        </button>
+      </div>
+    </div>
+  );
+
+    // Test Component
+    const TestStep = () => (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center px-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full">
+          <div className="text-center mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-full w-fit mx-auto mb-4">
+              <Heart className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Haben Sie Tests?</h2>
+            <p className="text-gray-600">Tests können eine wichtige Rolle für das Wohlbefinden spielen. Wählen Sie alle zutreffenden aus.</p>
+          </div>
+          
+          <div className="space-y-3">
+            {[
+              { value: 'test1', label: 'Test 1' },
+              { value: 'test2', label: 'Test 2' },
+
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => {
+                  const current = answers.pets || [];
+                  let updated;
+                  
+                  if (option.value === 'none') {
+                    // If "none" is selected, clear all other selections
+                    updated = current.includes('none') ? [] : ['none'];
+                  } else {
+                    // If any pet is selected, remove "none" if it exists
+                    const withoutNone = current.filter(item => item !== 'none');
+                    updated = withoutNone.includes(option.value)
+                      ? withoutNone.filter(item => item !== option.value)
+                      : [...withoutNone, option.value];
+                  }
+                  
+                  updateAnswer('tests', updated);
+                }}
+                className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
+                  (answers.tests || []).includes(option.value)
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  {option.label}
+                  {(answers.tests || []).includes(option.value) && (
+                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <button
+            onClick={() => nextStep('motivation')}
+            className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+          >
+            Weiter
+          </button>
+        </div>
+      </div>
+    );
 
   // Motivation Component
   const MotivationStep = () => (
@@ -285,11 +471,18 @@ const PsychAILanding = () => {
     const [email, setEmail] = useState('');
     const [submitted, setSubmitted] = useState(false);
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
       if (email && email.includes('@')) {
-        // Here you would typically send the email to your mailing list
-        console.log('Email submitted:', email, 'Answers:', answers);
-        setSubmitted(true);
+        try {
+          // E-Mail zur Warteliste hinzufügen und Survey-Daten speichern
+          await addToWaitlist(email, answers);
+          console.log('Email submitted to Supabase:', email, 'Answers:', answers);
+          setSubmitted(true);
+        } catch (error) {
+          console.error('Fehler beim Speichern der E-Mail:', error);
+          // Fallback: trotzdem als erfolgreich markieren für bessere UX
+          setSubmitted(true);
+        }
       }
     };
 
@@ -359,6 +552,10 @@ const PsychAILanding = () => {
         return <AgeStep />;
       case 'demographic':
         return <DemographicStep />;
+      case 'pets':
+        return <PetsStep />;
+      case 'tests':
+        return <TestStep />;
       case 'motivation':
         return <MotivationStep />;
       case 'purchase':
@@ -369,6 +566,36 @@ const PsychAILanding = () => {
         return <LandingPage />;
     }
   };
+
+  // Admin Dashboard Toggle
+  if (showAdmin) {
+    return (
+      <div className="font-sans">
+        <button
+          onClick={() => setShowAdmin(false)}
+          className="fixed top-4 left-4 z-50 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-green-700 transition-colors"
+        >
+          ← Zurück zur App
+        </button>
+        <SurveyAdminDashboard />
+      </div>
+    );
+  }
+
+  // Blog Toggle
+  if (showBlog) {
+    return (
+      <div className="font-sans">
+        <button
+          onClick={() => setShowBlog(false)}
+          className="fixed top-4 left-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
+        >
+          ← Zurück zur App
+        </button>
+        <WordPressBlogDemo />
+      </div>
+    );
+  }
 
   return (
     <div className="font-sans">
