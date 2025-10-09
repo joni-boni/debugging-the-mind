@@ -11,10 +11,10 @@ const ThankYouPage = () => {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-4">
-            🎉 Vielen Dank!
+            Vielen Dank!
           </h1>
           <p className="text-lg text-gray-600 mb-6">
-            Ihre Antworten wurden erfolgreich gespeichert. Sie sind jetzt auf unserer Warteliste und werden benachrichtigt, sobald wir bereit sind.
+            Deine Antworten wurden erfolgreich gespeichert. Du bist jetzt auf unserer Warteliste und wirst benachrichtigt, sobald wir bereit sind.
           </p>
         </div>
 
@@ -25,22 +25,22 @@ const ThankYouPage = () => {
           <ul className="text-blue-700 space-y-2 text-left">
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
-              Wir analysieren Ihre Antworten für personalisierte Inhalte
+              Wir analysieren deine Antworten für personalisierte Inhalte
             </li>
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
-              Sie erhalten Updates per E-Mail über unseren Fortschritt
+              Du erhältst Updates per E-Mail über unseren Fortschritt
             </li>
             <li className="flex items-start">
               <span className="text-blue-500 mr-2">•</span>
-              Sobald verfügbar, bekommen Sie frühen Zugang zu unserer Plattform
+              Sobald verfügbar, bekommst du frühen Zugang zu unserer Plattform
             </li>
           </ul>
         </div>
 
         <div className="border-t pt-6">
           <p className="text-sm text-gray-500 mb-4">
-            Falls Sie Fragen haben, können Sie uns jederzeit kontaktieren.
+            Falls du Fragen hast, kannst du uns jederzeit kontaktieren.
           </p>
           <div className="flex justify-center space-x-4">
             <a 

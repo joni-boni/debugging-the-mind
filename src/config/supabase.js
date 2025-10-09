@@ -7,7 +7,7 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
 // Validierung der Umgebungsvariablen
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Fehlende Supabase-Konfiguration. Bitte stellen Sie sicher, dass REACT_APP_SUPABASE_URL und REACT_APP_SUPABASE_ANON_KEY in der .env Datei gesetzt sind.'
+    'Fehlende Supabase-Konfiguration. Bitte stelle sicher, dass REACT_APP_SUPABASE_URL und REACT_APP_SUPABASE_ANON_KEY in der .env Datei gesetzt sind.'
   )
 }
 
@@ -90,19 +90,38 @@ export const signOut = async () => {
 export const saveSurveyData = async (surveyData) => {
   const user = await getCurrentUser()
   
-  // Strukturierte Daten aus surveyData extrahieren
+  // Strukturierte Daten aus surveyData extrahieren - alle 13 Schritte
   const structuredData = {
     user_id: user?.id,
     email: surveyData.email,
+    
+    // Demografische Daten
     age: surveyData.age,
     gender: surveyData.gender,
     demographics: surveyData.demographics,
-    pets: surveyData.pets || [],
-    motivation: surveyData.motivation || [],
-    additional_data: {
-      // Alle anderen Daten als JSON speichern
-      ...surveyData
-    }
+    relationship: surveyData.relationship,
+    
+    // Wohlbefinden & Verbesserung
+    wellbeing: surveyData.wellbeing,
+    improvements: surveyData.improvements || [],
+    
+    // Unterstützungserfahrung
+    previous_support: surveyData.previous_support || [],
+    
+    // KI-Erfahrung
+    ai_experience: surveyData.ai_experience,
+    ai_motivation: surveyData.ai_motivation || [],
+    
+    // Support-Präferenzen
+    support: surveyData.support || [],
+    app_boundaries: surveyData.app_boundaries || [],
+    
+    // Newsletter & Interview
+    newsletter: surveyData.newsletter || false,
+    interview: surveyData.interview || false,
+    
+    // Metadata
+    created_at: new Date().toISOString()
   }
   
   const { data, error } = await supabase
@@ -158,6 +177,122 @@ export const addToWaitlist = async (email, surveyData = null) => {
   }
   
   return data
+}
+
+/**
+ * Zwischenspeicherung-Funktionen für unvollständige Umfragen
+ */
+
+// Session-ID generieren (einmalig pro Browser-Session)
+export const generateSessionId = () => {
+  const existing = sessionStorage.getItem('survey_session_id')
+  if (existing) return existing
+  
+  const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+  sessionStorage.setItem('survey_session_id', sessionId)
+  return sessionId
+}
+
+// Aktuelle Session-ID abrufen
+export const getSessionId = () => {
+  return sessionStorage.getItem('survey_session_id') || generateSessionId()
+}
+
+// Zwischenspeicherung der aktuellen Umfrage-Daten
+export const savePartialSurvey = async (currentStep, answers, email = null) => {
+  const sessionId = getSessionId()
+  
+  const partialData = {
+    session_id: sessionId,
+    current_step: currentStep,
+    answers: answers,
+    email: email,
+    updated_at: new Date().toISOString()
+  }
+  
+  try {
+    // Upsert: Update wenn session_id existiert, sonst Insert
+    const { data, error } = await supabase
+      .from('partial_surveys')
+      .upsert([partialData], { 
+        onConflict: 'session_id',
+        ignoreDuplicates: false 
+      })
+    
+    if (error) {
+      console.warn('Fehler beim Zwischenspeichern in Supabase:', error)
+      // Fallback: Lokale Speicherung
+      localStorage.setItem('partial_survey_' + sessionId, JSON.stringify(partialData))
+      return { success: true, fallback: true }
+    }
+    
+    console.log('✅ Umfrage zwischengespeichert:', currentStep)
+    return { success: true, data }
+  } catch (error) {
+    console.warn('Zwischenspeicherung fehlgeschlagen:', error)
+    // Fallback: Lokale Speicherung
+    localStorage.setItem('partial_survey_' + getSessionId(), JSON.stringify(partialData))
+    return { success: true, fallback: true }
+  }
+}
+
+// Gespeicherte Umfrage-Daten laden
+export const loadPartialSurvey = async () => {
+  const sessionId = getSessionId()
+  
+  try {
+    // Erst aus Supabase versuchen
+    const { data, error } = await supabase
+      .from('partial_surveys')
+      .select('*')
+      .eq('session_id', sessionId)
+      .single()
+    
+    if (error || !data) {
+      // Fallback: Lokale Speicherung prüfen  
+      const localData = localStorage.getItem('partial_survey_' + sessionId)
+      if (localData) {
+        const parsed = JSON.parse(localData)
+        console.log('Umfrage aus lokalem Speicher geladen')
+        return parsed
+      }
+      return null
+    }
+    
+    console.log('Umfrage aus Supabase geladen')
+    return data
+  } catch (error) {
+    console.warn('Fehler beim Laden der Zwischenspeicherung:', error)
+    
+    // Fallback: Lokale Speicherung
+    const localData = localStorage.getItem('partial_survey_' + sessionId)
+    if (localData) {
+      return JSON.parse(localData)
+    }
+    
+    return null
+  }
+}
+
+// Zwischenspeicherung löschen (nach erfolgreichem Abschluss)
+export const clearPartialSurvey = async () => {
+  const sessionId = getSessionId()
+  
+  try {
+    // Aus Supabase löschen
+    await supabase
+      .from('partial_surveys')
+      .delete()
+      .eq('session_id', sessionId)
+    
+    // Aus lokalem Speicher löschen
+    localStorage.removeItem('partial_survey_' + sessionId)
+    sessionStorage.removeItem('survey_session_id')
+    
+    console.log('🧹 Zwischenspeicherung gelöscht')
+  } catch (error) {
+    console.warn('Fehler beim Löschen der Zwischenspeicherung:', error)
+  }
 }
 
 // Auth State Change Listener

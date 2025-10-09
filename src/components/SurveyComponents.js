@@ -202,11 +202,14 @@ export const EmailInputQuestion = ({
   onBack,
   showBack = true,
   submitButtonText = "Absenden",
-  isSubmitting = false
+  isSubmitting = false,
+  showCheckboxes = false
 }) => {
   const [email, setEmail] = React.useState(initialEmail);
   const [showValidation, setShowValidation] = React.useState(false);
   const [hasBlurred, setHasBlurred] = React.useState(false);
+  const [newsletter, setNewsletter] = React.useState(false);
+  const [interview, setInterview] = React.useState(false);
   
   const isValidEmail = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const shouldShowError = (showValidation || hasBlurred) && email && !isValidEmail;
@@ -223,7 +226,7 @@ export const EmailInputQuestion = ({
   const handleSubmit = () => {
     setShowValidation(true);
     if (isValidEmail) {
-      onSubmit(email); // Pass email to parent
+      onSubmit(email, { newsletter, interview }); // Pass email and checkbox values to parent
     }
   };
 
@@ -244,6 +247,34 @@ export const EmailInputQuestion = ({
         />
         {shouldShowError && (
           <p className="text-red-500 text-sm mt-2">Bitte gib eine gültige E-Mail-Adresse ein</p>
+        )}
+        
+        {showCheckboxes && (
+          <div className="mt-6 space-y-4">
+            <label className="flex items-center cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={newsletter}
+                onChange={(e) => setNewsletter(e.target.checked)}
+                className="mr-3 w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <span className="text-gray-700 group-hover:text-gray-900">
+                📧 Newsletter für die App - Ich möchte über Updates und den Launch informiert werden
+              </span>
+            </label>
+            
+            <label className="flex items-center cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={interview}
+                onChange={(e) => setInterview(e.target.checked)}
+                className="mr-3 w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <span className="text-gray-700 group-hover:text-gray-900">
+                💬 Man darf mich für ein Interview kontaktieren um den Entwicklungsprozess aktiv mitzugestalten
+              </span>
+            </label>
+          </div>
         )}
       </div>
 
@@ -314,6 +345,111 @@ export const StaticPageQuestion = ({
           <ArrowRight className="ml-2 h-4 w-4" />
         </button>
       )}
+    </div>
+  </div>
+);
+
+// Slider Question Component
+export const SliderQuestion = ({
+  title,
+  subtitle,
+  min = 1,
+  max = 10,
+  value,
+  onChange,
+  onNext,
+  onBack,
+  showBack = true,
+  nextButtonText = "Weiter",
+  leftLabel = "",
+  rightLabel = ""
+}) => (
+  <div>
+    <h1 className="text-3xl font-bold text-gray-800 mb-4">{title}</h1>
+    {subtitle && <p className="text-gray-600 mb-8">{subtitle}</p>}
+    
+    <div className="mb-8">
+      {/* Current Value Display */}
+      <div className="text-center mb-6">
+        <div className="inline-block bg-blue-100 px-6 py-3 rounded-full">
+          <span className="text-2xl font-bold text-blue-600">{value}</span>
+        </div>
+      </div>
+      
+      {/* Slider */}
+      <div className="relative mb-4">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(parseInt(e.target.value))}
+          className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+          style={{
+            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((value - min) / (max - min)) * 100}%, #e5e7eb ${((value - min) / (max - min)) * 100}%, #e5e7eb 100%)`
+          }}
+        />
+        
+        {/* Custom Slider Styles */}
+        <style jsx>{`
+          .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          }
+          
+          .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          }
+        `}</style>
+      </div>
+      
+      {/* Labels */}
+      {(leftLabel || rightLabel) && (
+        <div className="flex justify-between text-sm text-gray-500">
+          <span>{leftLabel}</span>
+          <span>{rightLabel}</span>
+        </div>
+      )}
+      
+      {/* Scale Numbers */}
+      <div className="flex justify-between text-xs text-gray-400 mt-2">
+        {Array.from({ length: max - min + 1 }, (_, i) => (
+          <span key={i}>{min + i}</span>
+        ))}
+      </div>
+    </div>
+
+    {/* Navigation Buttons */}
+    <div className={`flex ${showBack ? 'justify-between' : 'justify-end'} items-center`}>
+      {showBack && (
+        <button
+          onClick={onBack}
+          className="flex items-center px-6 py-3 rounded-xl font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Zurück
+        </button>
+      )}
+      
+      <button
+        onClick={onNext}
+        className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl ${!showBack ? 'ml-auto' : ''}`}
+      >
+        {nextButtonText}
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </button>
     </div>
   </div>
 );

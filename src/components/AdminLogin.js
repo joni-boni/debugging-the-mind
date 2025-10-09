@@ -22,7 +22,7 @@ const AdminLogin = ({ onLogin }) => {
       sessionStorage.setItem('admin_authenticated', 'true');
       onLogin(true);
     } else {
-      setError('Falsches Passwort. Bitte versuchen Sie es erneut.');
+      setError('Falsches Passwort. Bitte versuche es erneut.');
       setPassword('');
     }
 
@@ -40,7 +40,7 @@ const AdminLogin = ({ onLogin }) => {
             Admin Dashboard
           </h1>
           <p className="text-gray-600">
-            Bitte geben Sie das Admin-Passwort ein
+            Bitte gib das Admin-Passwort ein
           </p>
         </div>
 
@@ -105,7 +105,7 @@ const AdminLogin = ({ onLogin }) => {
 
         <div className="mt-6 pt-6 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            🔒 Sicherer Zugang zum Admin-Bereich
+            Sicherer Zugang zum Admin-Bereich
           </p>
         </div>
       </div>

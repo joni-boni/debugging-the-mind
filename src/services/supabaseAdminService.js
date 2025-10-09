@@ -53,25 +53,41 @@ class SupabaseAdminService {
         }
       });
 
-      // Haustierverteilung
-      const petsDistribution = {};
+      // Verbesserungsbereiche-Verteilung
+      const improvementsDistribution = {};
       responses?.forEach(response => {
-        if (response.pets && Array.isArray(response.pets)) {
-          response.pets.forEach(pet => {
-            petsDistribution[pet] = (petsDistribution[pet] || 0) + 1;
+        if (response.improvements && Array.isArray(response.improvements)) {
+          response.improvements.forEach(improvement => {
+            improvementsDistribution[improvement] = (improvementsDistribution[improvement] || 0) + 1;
           });
         }
       });
 
-      // Motivationsverteilung
-      const motivationDistribution = {};
+      // AI-Motivationsverteilung
+      const aiMotivationDistribution = {};
       responses?.forEach(response => {
-        if (response.motivation && Array.isArray(response.motivation)) {
-          response.motivation.forEach(motivation => {
-            motivationDistribution[motivation] = (motivationDistribution[motivation] || 0) + 1;
+        if (response.ai_motivation && Array.isArray(response.ai_motivation)) {
+          response.ai_motivation.forEach(motivation => {
+            aiMotivationDistribution[motivation] = (aiMotivationDistribution[motivation] || 0) + 1;
           });
         }
       });
+
+      // Support-Präferenzen-Verteilung
+      const supportDistribution = {};
+      responses?.forEach(response => {
+        if (response.support && Array.isArray(response.support)) {
+          response.support.forEach(support => {
+            supportDistribution[support] = (supportDistribution[support] || 0) + 1;
+          });
+        }
+      });
+
+      // Wohlbefinden-Durchschnitt
+      const wellbeingValues = responses?.filter(r => r.wellbeing).map(r => r.wellbeing) || [];
+      const averageWellbeing = wellbeingValues.length > 0 
+        ? wellbeingValues.reduce((a, b) => a + b, 0) / wellbeingValues.length 
+        : 0;
 
       // Zeitbasierte Statistiken
       const today = new Date().toISOString().split('T')[0];
@@ -92,8 +108,10 @@ class SupabaseAdminService {
         ageDistribution,
         genderDistribution,
         demographicsDistribution,
-        petsDistribution,
-        motivationDistribution,
+        improvementsDistribution,
+        aiMotivationDistribution,
+        supportDistribution,
+        averageWellbeing,
         responses: responses || []
       };
 

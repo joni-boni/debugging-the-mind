@@ -48,7 +48,7 @@ const SurveyAdminDashboard = () => {
   };
 
   const handleDeleteResponse = async (id) => {
-    if (window.confirm('Sind Sie sicher, dass Sie diese Antwort löschen möchten?')) {
+    if (window.confirm('Bist du sicher, dass du diese Antwort löschen möchtest?')) {
       try {
         await supabaseAdminService.deleteSurveyResponse(id);
         loadDashboardData();
@@ -60,7 +60,7 @@ const SurveyAdminDashboard = () => {
   };
 
   const handleDeleteWaitlistEntry = async (id) => {
-    if (window.confirm('Sind Sie sicher, dass Sie diesen Wartelisten-Eintrag löschen möchten?')) {
+    if (window.confirm('Bist du sicher, dass du diesen Wartelisten-Eintrag löschen möchtest?')) {
       try {
         await supabaseAdminService.deleteWaitlistEntry(id);
         loadDashboardData();

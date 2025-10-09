@@ -1,6 +1,14 @@
--- Survey Database Schema - Aktualisiert für 13-Schritt-Umfrage
--- Erstelle dedizierte Tabelle für Survey-Daten
+-- Migration Script: Von alter zu neuer Tabellenstruktur
+-- Führe dieses Script in deinem Supabase SQL Editor aus
 
+-- 1. Backup der alten Daten (falls vorhanden)
+CREATE TABLE IF NOT EXISTS survey_responses_backup AS 
+SELECT * FROM survey_responses;
+
+-- 2. Lösche alte Tabelle (vorsichtig!)
+DROP TABLE IF EXISTS survey_responses CASCADE;
+
+-- 3. Erstelle neue Tabellenstruktur
 CREATE TABLE survey_responses (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id UUID REFERENCES auth.users(id),
@@ -38,15 +46,15 @@ CREATE TABLE survey_responses (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Warteliste Tabelle
-CREATE TABLE waitlist (
+-- 4. Erstelle/Update Warteliste Tabelle
+CREATE TABLE IF NOT EXISTS waitlist (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     email VARCHAR(255) NOT NULL UNIQUE,
     survey_data JSONB DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Indizes für bessere Performance
+-- 5. Erstelle Indizes
 CREATE INDEX idx_survey_responses_email ON survey_responses(email);
 CREATE INDEX idx_survey_responses_created_at ON survey_responses(created_at);
 CREATE INDEX idx_survey_responses_age ON survey_responses(age);
@@ -54,11 +62,11 @@ CREATE INDEX idx_survey_responses_demographics ON survey_responses(demographics)
 CREATE INDEX idx_waitlist_email ON waitlist(email);
 CREATE INDEX idx_waitlist_created_at ON waitlist(created_at);
 
--- Row Level Security (RLS) aktivieren
+-- 6. Aktiviere Row Level Security
 ALTER TABLE survey_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- 7. Erstelle RLS Policies
 CREATE POLICY "Public can insert survey responses" ON survey_responses
     FOR INSERT WITH CHECK (true);
 
@@ -68,7 +76,7 @@ CREATE POLICY "Users can view own survey responses" ON survey_responses
 CREATE POLICY "Public can insert to waitlist" ON waitlist
     FOR INSERT WITH CHECK (true);
 
--- Admin kann alles sehen (für Dashboard)
+-- Admin Policies (ersetze admin@mindguard.ai mit deiner Admin E-Mail)
 CREATE POLICY "Admin can view all survey responses" ON survey_responses
     FOR SELECT USING (
         EXISTS (
@@ -86,3 +94,12 @@ CREATE POLICY "Admin can view all waitlist entries" ON waitlist
             AND auth.users.email = 'admin@mindguard.ai'
         )
     );
+
+-- 8. Grant Permissions
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON survey_responses TO anon, authenticated;
+GRANT ALL ON waitlist TO anon, authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
+-- Migration abgeschlossen!
+SELECT 'Migration completed successfully!' as status;
