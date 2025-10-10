@@ -111,10 +111,13 @@ export const saveSurveyData = async (surveyData) => {
     // KI-Erfahrung
     ai_experience: surveyData.ai_experience,
     ai_motivation: surveyData.ai_motivation || [],
+    ai_motivation_other: surveyData.ai_motivation_other || null,
     
     // Support-Präferenzen
     support: surveyData.support || [],
+    support_other: surveyData.support_other || null,
     app_boundaries: surveyData.app_boundaries || [],
+    app_boundaries_other: surveyData.app_boundaries_other || null,
     
     // Newsletter & Interview
     newsletter: surveyData.newsletter || false,

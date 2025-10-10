@@ -50,10 +50,21 @@ export const SingleChoiceQuestion = ({
               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
           }`}
         >
-          <div className="font-semibold">{option.label}</div>
-          {option.description && (
-            <div className="text-sm text-gray-500 mt-1">{option.description}</div>
-          )}
+          <div className="flex items-center">
+            {option.icon && (
+              <div className="mr-3 flex-shrink-0">
+                {React.createElement(option.icon, { 
+                  className: `w-5 h-5 ${selectedValue === option.value ? 'text-blue-600' : 'text-gray-500'}` 
+                })}
+              </div>
+            )}
+            <div className="flex-1">
+              <div className="font-semibold">{option.label}</div>
+              {option.description && (
+                <div className="text-sm text-gray-500 mt-1">{option.description}</div>
+              )}
+            </div>
+          </div>
         </button>
       ))}
     </div>
@@ -151,10 +162,27 @@ export const MultipleChoiceQuestion = ({
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <div className="font-semibold">{option.label}</div>
-              {option.description && (
-                <div className="text-sm text-gray-500 mt-1">{option.description}</div>
-              )}
+              <div className="flex items-center">
+                {option.icon && (
+                  <div className="mr-3 flex-shrink-0">
+                    {React.createElement(option.icon, { 
+                      className: `w-5 h-5 ${
+                        isSelected 
+                          ? 'text-blue-600' 
+                          : isDisabled 
+                          ? 'text-gray-400' 
+                          : 'text-gray-500'
+                      }` 
+                    })}
+                  </div>
+                )}
+                <div className="flex-1">
+                  <div className="font-semibold">{option.label}</div>
+                  {option.description && (
+                    <div className="text-sm text-gray-500 mt-1">{option.description}</div>
+                  )}
+                </div>
+              </div>
             </button>
           );
         })}
@@ -377,14 +405,14 @@ export const SliderQuestion = ({
       </div>
       
       {/* Slider */}
-      <div className="relative mb-4">
+      <div className="relative mb-4 py-4">
         <input
           type="range"
           min={min}
           max={max}
           value={value}
           onChange={(e) => onChange(parseInt(e.target.value))}
-          className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+          className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider touch-manipulation"
           style={{
             background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((value - min) / (max - min)) * 100}%, #e5e7eb ${((value - min) / (max - min)) * 100}%, #e5e7eb 100%)`
           }}
@@ -392,25 +420,77 @@ export const SliderQuestion = ({
         
         {/* Custom Slider Styles */}
         <style jsx>{`
+          .slider {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            outline: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+          }
+          
           .slider::-webkit-slider-thumb {
             appearance: none;
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: #3b82f6;
             cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 4px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 10;
+          }
+          
+          .slider::-webkit-slider-thumb:hover,
+          .slider::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
           }
           
           .slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: #3b82f6;
             cursor: pointer;
-            border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 4px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
+            -moz-appearance: none;
+            appearance: none;
+          }
+          
+          .slider::-moz-range-thumb:hover,
+          .slider::-moz-range-thumb:active {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+          }
+          
+          .slider::-webkit-slider-track {
+            height: 12px;
+            border-radius: 6px;
+          }
+          
+          .slider::-moz-range-track {
+            height: 12px;
+            border-radius: 6px;
+            background: transparent;
+            border: none;
+          }
+          
+          /* Touch-optimized styles for mobile */
+          @media (pointer: coarse) {
+            .slider::-webkit-slider-thumb {
+              width: 40px;
+              height: 40px;
+            }
+            
+            .slider::-moz-range-thumb {
+              width: 40px;
+              height: 40px;
+            }
           }
         `}</style>
       </div>

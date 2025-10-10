@@ -1,5 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Shield, Users, Star, CheckCircle } from 'lucide-react';
+import { 
+  Brain, Shield, Users, Star, CheckCircle,
+  // Alter Icons
+  Baby, User, UserCheck, Crown, 
+  // Geschlecht Icons
+  UserRound, UserSquare2,
+  // Demografische Icons
+  GraduationCap, BookOpen, Briefcase, Laptop, Armchair, UserX, School,
+  // Beziehung Icons
+  Heart, HeartCrack, HelpCircle, Lock,
+  // Verbesserung Icons
+  Zap, Moon, ShieldAlert, TrendingUp, MessageSquare, Focus, Smile, Target, Flower,
+  // Support Icons
+  Stethoscope, Home, MessageCircle, Globe, X,
+  // KI Erfahrung Icons
+  Clock, Calendar, Repeat, RotateCcw,
+  // KI Motivation Icons
+  Clock3, ShieldCheck, Eye, Timer, DollarSign, ArrowDown, Plus, Lightbulb, MessageSquareText, Mic, Edit,
+  // Navigation Icons
+  ArrowLeft, ArrowRight,
+  // Support Präferenzen Icons
+  Shield as ShieldIcon, AlertTriangle, Moon as MoonIcon, CheckSquare, Hourglass, UserMinus,
+  // App Grenzen Icons
+  UserX as FakeTherapist, Ban, Bot, AlertCircle, Bell, Share, Hospital
+} from 'lucide-react';
 import { 
   SurveyContainer, 
   SingleChoiceQuestion, 
@@ -9,6 +33,24 @@ import {
   SliderQuestion 
 } from './components/SurveyComponents';
 import { supabase, addToWaitlist, saveSurveyData, savePartialSurvey, loadPartialSurvey, clearPartialSurvey } from './config/supabase';
+
+// Einfache statische Komponente für "Sonstiges" Textfelder - außerhalb der App Komponente definiert
+const SimpleTextInput = ({ value, onChange, placeholder, label, rows = 3 }) => {
+  return (
+    <div className="mb-8">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+      </label>
+      <textarea
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors resize-none"
+        rows={rows}
+      />
+    </div>
+  );
+};
 
 function App() {
   const [currentStep, setCurrentStep] = React.useState('landing');
@@ -71,6 +113,11 @@ function App() {
       nextStepName = targetStep;
     } else if (currentIndex < stepOrder.length - 1) {
       nextStepName = stepOrder[currentIndex + 1];
+      
+      // Spezielle Logik: Überspringe AI Motivation wenn "nie" bei AI Experience gewählt wurde
+      if (currentStep === 'ai_experience' && answers.ai_experience === 'never') {
+        nextStepName = 'support'; // Springe direkt zu Support (überspringt ai_motivation)
+      }
     } else {
       return; // Bereits am Ende
     }
@@ -93,10 +140,18 @@ function App() {
   const prevStep = React.useCallback(() => {
     const stepOrder = ['landing', 'age', 'gender', 'demographics', 'relationship', 'wellbeing', 'stress', 'previous_support', 'ai_experience', 'ai_motivation', 'support', 'app_boundaries', 'purchase', 'success'];
     const currentIndex = stepOrder.indexOf(currentStep);
+    
     if (currentIndex > 0) {
-      setCurrentStep(stepOrder[currentIndex - 1]);
+      let prevStepName = stepOrder[currentIndex - 1];
+      
+      // Spezielle Logik: Wenn wir bei Support sind und AI Experience "never" war, springe zurück zu AI Experience
+      if (currentStep === 'support' && answers.ai_experience === 'never') {
+        prevStepName = 'ai_experience';
+      }
+      
+      setCurrentStep(prevStepName);
     }
-  }, [currentStep]);
+  }, [currentStep, answers.ai_experience]);
 
   const handleEmailChange = React.useCallback((newEmail) => {
     setEmail(newEmail);
@@ -155,71 +210,64 @@ function App() {
 
   // Enhanced Landing Component mit modularen Komponenten
   const LandingPage = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation */}
-      <nav className="absolute top-0 right-0 p-6 flex space-x-3">
-        {/* Supabase Status Anzeige */}
-        <div className="flex items-center bg-white px-3 py-2 rounded-full shadow-lg text-xs">
-          <div className={`w-2 h-2 rounded-full mr-2 ${supabase ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-gray-600">
-            {supabase ? 'Supabase verbunden' : 'Offline'}
-          </span>
-        </div>
-      </nav>
-      
-      <SurveyContainer currentStep={1} totalSteps={13}>
-        <StaticPageQuestion
-          title="Willkommen bei MindGuard"
-          subtitle="Entdecke deinen persönlichen, modulbasierten psychologischen Assistenten für präventive Betreuung und mentales Wohlbefinden."
-          onNext={() => nextStep()}
-          nextButtonText="Jetzt starten"
-          content={
-            <div className="space-y-6">
-              {/* Hero Section */}
-              <div className="text-center">
-                <div className="flex justify-center mb-6">
-                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-full">
-                    <Brain className="w-12 h-12 text-white" />
-                  </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+          {/* Content */}
+          <div className="text-center">
+            {/* Hero Section - Ultra kompakt für kleine Bildschirme */}
+            <div className="mb-4 sm:mb-6 md:mb-8">
+              <div className="flex justify-center mb-2 sm:mb-4">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 sm:p-3 md:p-4 rounded-full">
+                  <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 text-white" />
                 </div>
-                
-                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-                  Deine mentale Gesundheit
-                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                    im Fokus
-                  </span>
-                </h1>
               </div>
               
-              {/* Features Grid */}
-              <div className="flex justify-center mt-12">
-                <div className="grid md:grid-cols-2 gap-6 max-w-2xl">
-                  <div className="bg-blue-50 p-6 rounded-xl text-center">
-                    <div className="bg-blue-100 p-3 rounded-full w-fit mx-auto mb-4">
-                      <Shield className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <h3 className="font-semibold mb-2 text-gray-900">Präventive Hilfe</h3>
-                    <p className="text-sm text-gray-600">
-                      Frühzeitige Erkennung von Stresssignalen
-                    </p>
-                  </div>
-                  
-                  <div className="bg-green-50 p-6 rounded-xl text-center">
-                    <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
-                      <Users className="w-6 h-6 text-green-600" />
-                    </div>
-                    <h3 className="font-semibold mb-2 text-gray-900">Modulbasiert</h3>
-                    <p className="text-sm text-gray-600">
-                      Verschiedene Module für deine Bedürfnisse
-                    </p>
-                  </div>
-                </div>
-              </div>
-            
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 md:mb-4 leading-tight">
+                Willkommen bei MindGuard
+              </h1>
+              
+              <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-3 sm:mb-4 md:mb-6 px-2">
+                Entdecke deinen persönlichen, modulbasierten psychologischen Assistenten für präventive Betreuung und mentales Wohlbefinden.
+              </p>
             </div>
-          }
-        />
-      </SurveyContainer>
+            
+            {/* Features Grid - Ultra kompakt */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
+              <div className="bg-blue-50 p-3 sm:p-4 md:p-6 rounded-xl text-center">
+                <div className="bg-blue-100 p-1.5 sm:p-2 md:p-3 rounded-full w-fit mx-auto mb-2 sm:mb-3 md:mb-4">
+                  <Shield className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600" />
+                </div>
+                <h3 className="font-semibold mb-1 text-gray-900 text-xs sm:text-sm md:text-base">Präventive Hilfe</h3>
+                <p className="text-xs md:text-sm text-gray-600">
+                  Frühzeitige Erkennung von Stresssignalen
+                </p>
+              </div>
+              
+              <div className="bg-green-50 p-3 sm:p-4 md:p-6 rounded-xl text-center">
+                <div className="bg-green-100 p-1.5 sm:p-2 md:p-3 rounded-full w-fit mx-auto mb-2 sm:mb-3 md:mb-4">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" />
+                </div>
+                <h3 className="font-semibold mb-1 text-gray-900 text-xs sm:text-sm md:text-base">Modulbasiert</h3>
+                <p className="text-xs md:text-sm text-gray-600">
+                  Verschiedene Module für deine Bedürfnisse
+                </p>
+              </div>
+            </div>
+
+            {/* Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => nextStep()}
+                className="w-full sm:w-auto flex items-center justify-center px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl text-sm sm:text-base"
+              >
+                Jetzt starten
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -231,11 +279,12 @@ function App() {
           title="Wie alt bist du?"
           subtitle="Dies hilft uns, passende Inhalte für dich zu finden."
           options={[
-            { value: '18-25', label: '18-25 Jahre' },
-            { value: '26-35', label: '26-35 Jahre' },
-            { value: '36-45', label: '36-45 Jahre' },
-            { value: '46-55', label: '46-55 Jahre' },
-            { value: '56+', label: '56+ Jahre' }
+            { value: 'under-18', label: 'Unter 18 Jahre', icon: School },
+            { value: '18-25', label: '18-25 Jahre', icon: User },
+            { value: '26-35', label: '26-35 Jahre', icon: UserCheck },
+            { value: '36-45', label: '36-45 Jahre', icon: Briefcase },
+            { value: '46-55', label: '46-55 Jahre', icon: Crown },
+            { value: '56+', label: '56+ Jahre', icon: Armchair }
           ]}
           selectedValue={answers.age}
           onSelect={(value) => updateAnswer('age', value)}
@@ -254,9 +303,9 @@ function App() {
           title="Welches Geschlecht hast du?"
           subtitle="Diese Information hilft uns bei der personalisierten Analyse."
           options={[
-            { value: 'male', label: 'Männlich' },
-            { value: 'female', label: 'Weiblich' },
-            { value: 'diverse', label: 'Divers' }
+            { value: 'male', label: 'Männlich', icon: UserRound },
+            { value: 'female', label: 'Weiblich', icon: UserSquare2 },
+            { value: 'diverse', label: 'Divers', icon: Users }
           ]}
           selectedValue={answers.gender}
           onSelect={(value) => updateAnswer('gender', value)}
@@ -275,13 +324,13 @@ function App() {
           title="Was beschreibt dich am besten?"
           subtitle="So können wir dir relevantere Inhalte bieten."
           options={[
-            { value: 'student', label: 'Student/in' },
-            { value: 'pupil', label: 'Schüler/in' },
-            { value: 'employee', label: 'Angestellte/r' },
-            { value: 'manager', label: 'Führungskraft' },
-            { value: 'selfemployed', label: 'Selbstständig' },
-            { value: 'parent', label: 'Elternteil' },
-            { value: 'retired', label: 'Rentner/in' }
+            { value: 'student', label: 'Student/in', icon: GraduationCap },
+            { value: 'pupil', label: 'Schüler/in', icon: BookOpen },
+            { value: 'employee', label: 'Angestellte/r', icon: Briefcase },
+            { value: 'manager', label: 'Führungskraft', icon: Crown },
+            { value: 'selfemployed', label: 'Selbstständig', icon: Laptop },
+            { value: 'parent', label: 'Elternteil', icon: Baby },
+            { value: 'retired', label: 'Rentner/in', icon: Armchair }
           ]}
           selectedValue={answers.demographics}
           onSelect={(value) => updateAnswer('demographics', value)}
@@ -300,11 +349,11 @@ function App() {
           title="Wie ist dein Beziehungsstatus?"
           subtitle="Diese Information hilft uns, dir passende Inhalte zu empfehlen."
           options={[
-            { value: 'single', label: 'Single' },
-            { value: 'dating', label: 'In einer Beziehung' },
-            { value: 'recently_separated', label: 'Frisch getrennt' },
-            { value: 'complicated', label: 'Es ist kompliziert' },
-            { value: 'no_answer', label: 'Möchte ich nicht sagen' }
+            { value: 'single', label: 'Single', icon: User },
+            { value: 'dating', label: 'In einer Beziehung', icon: Heart },
+            { value: 'recently_separated', label: 'Frisch getrennt', icon: HeartCrack },
+            { value: 'complicated', label: 'Es ist kompliziert', icon: HelpCircle },
+            { value: 'no_answer', label: 'Möchte ich nicht sagen', icon: Lock }
           ]}
           selectedValue={answers.relationship}
           onSelect={(value) => updateAnswer('relationship', value)}
@@ -323,12 +372,12 @@ function App() {
           title="Hast du schon mal mit jemandem über persönliche Probleme gesprochen?"
           subtitle="Wähle alle aus, mit denen du bereits über schwierige Themen geredet hast."
           options={[
-            { value: 'therapist', label: 'Therapeut/in oder Psycholog/in' },
-            { value: 'partner', label: 'Partner/in' },
-            { value: 'family', label: 'Familie (Eltern, Geschwister)' },
-            { value: 'friends', label: 'Freunde/Freundinnen' },
-            { value: 'online', label: 'Online-Community oder Forum' },
-            { value: 'never', label: 'Noch nie mit jemandem darüber gesprochen' }
+            { value: 'therapist', label: 'Therapeut/in oder Psycholog/in', icon: Stethoscope },
+            { value: 'partner', label: 'Partner/in', icon: Heart },
+            { value: 'family', label: 'Familie (Eltern, Geschwister)', icon: Home },
+            { value: 'friends', label: 'Freunde/Freundinnen', icon: MessageCircle },
+            { value: 'online', label: 'Online-Community oder Forum', icon: Globe },
+            { value: 'never', label: 'Noch nie mit jemandem darüber gesprochen', icon: X }
           ]}
           selectedValues={answers.previous_support || []}
           onToggle={(values) => updateAnswer('previous_support', values)}
@@ -349,12 +398,12 @@ function App() {
           title="Hast du schon einmal mit einer KI über persönliche Dinge gesprochen?"
           subtitle="Zum Beispiel mit ChatGPT, Claude, Bard oder anderen KI-Assistenten."
           options={[
-            { value: 'never', label: 'Noch nie' },
-            { value: 'rarely', label: 'Selten (1-2 mal)' },
-            { value: 'sometimes', label: 'Manchmal (3-10 mal)' },
-            { value: 'regularly', label: 'Regelmäßig (mehrmals im Monat)' },
-            { value: 'frequently', label: 'Häufig (mehrmals pro Woche)' },
-            { value: 'daily', label: 'Täglich oder fast täglich' }
+            { value: 'never', label: 'Noch nie', icon: X },
+            { value: 'rarely', label: 'Selten (1-2 mal)', icon: Clock },
+            { value: 'sometimes', label: 'Manchmal (3-10 mal)', icon: Clock3 },
+            { value: 'regularly', label: 'Regelmäßig (mehrmals im Monat)', icon: Calendar },
+            { value: 'frequently', label: 'Häufig (mehrmals pro Woche)', icon: Repeat },
+            { value: 'daily', label: 'Täglich oder fast täglich', icon: RotateCcw }
           ]}
           selectedValue={answers.ai_experience}
           onSelect={(value) => updateAnswer('ai_experience', value)}
@@ -366,33 +415,114 @@ function App() {
   );
 
   // AI Motivation mit modularen Komponenten
-  const AIMotivationStep = () => (
-    <div>
-      <SurveyContainer currentStep={10} totalSteps={13}>
-        <MultipleChoiceQuestion
-          title="Weshalb sprichst du mit einer KI?"
-          subtitle="Wähle alle Gründe aus, die auf dich zutreffen."
-          options={[
-            { value: 'available_24_7', label: 'Verfügbarkeit 24/7' },
-            { value: 'no_judgment', label: 'Niemand urteilt über mich' },
-            { value: 'anonymity', label: 'Anonymität' },
-            { value: 'no_waiting', label: 'Keine Wartezeiten wie bei Therapeuten' },
-            { value: 'cost_effective', label: 'Kostenlos/günstiger als Therapie' },
-            { value: 'low_barrier', label: 'Niedrigschwelliger Einstieg' },
-            { value: 'therapy_supplement', label: 'Ergänzung zu echter Therapie' },
-            { value: 'curiosity', label: 'Einfach aus Neugier' },
-            { value: 'immediate_response', label: 'Sofortige Antworten' },
-            { value: 'practice_conversations', label: 'Um Gespräche zu üben' }
-          ]}
-          selectedValues={answers.ai_motivation || []}
-          onToggle={(values) => updateAnswer('ai_motivation', values)}
-          minSelections={1}
-          onNext={() => nextStep()}
-          onBack={prevStep}
-        />
-      </SurveyContainer>
-    </div>
-  );
+  const AIMotivationStep = () => {
+    const [otherText, setOtherText] = React.useState(answers.ai_motivation_other || '');
+    const selectedValues = answers.ai_motivation || [];
+    const showOtherInput = selectedValues.includes('other');
+
+    const handleToggle = (values) => {
+      updateAnswer('ai_motivation', values);
+      if (!values.includes('other')) {
+        // Wenn "Sonstiges" abgewählt wird, den Text löschen
+        setOtherText('');
+        updateAnswer('ai_motivation_other', '');
+      }
+    };
+
+    const handleOtherTextChange = (value) => {
+      setOtherText(value);
+      updateAnswer('ai_motivation_other', value);
+    };
+
+    return (
+      <div>
+        <SurveyContainer currentStep={10} totalSteps={13}>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Weshalb sprichst du mit einer KI?</h1>
+            <p className="text-gray-600 mb-8">Wähle alle Gründe aus, die auf dich zutreffen.</p>
+            
+            <div className="space-y-3 mb-8">
+              {[
+                { value: 'available_24_7', label: 'Verfügbarkeit 24/7', icon: Clock3 },
+                { value: 'no_judgment', label: 'Niemand urteilt über mich', icon: ShieldCheck },
+                { value: 'anonymity', label: 'Anonymität', icon: Eye },
+                { value: 'no_waiting', label: 'Keine Wartezeiten wie bei Therapeuten', icon: Timer },
+                { value: 'cost_effective', label: 'Kostenlos/günstiger als Therapie', icon: DollarSign },
+                { value: 'low_barrier', label: 'Niedrigschwelliger Einstieg', icon: ArrowDown },
+                { value: 'therapy_supplement', label: 'Ergänzung zu echter Therapie', icon: Plus },
+                { value: 'curiosity', label: 'Einfach aus Neugier', icon: Lightbulb },
+                { value: 'immediate_response', label: 'Sofortige Antworten', icon: MessageSquareText },
+                { value: 'practice_conversations', label: 'Um Gespräche zu üben', icon: Mic },
+                { value: 'other', label: 'Sonstiges', icon: Edit }
+              ].map((option) => {
+                const isSelected = selectedValues.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      const newValues = isSelected 
+                        ? selectedValues.filter(v => v !== option.value)
+                        : [...selectedValues, option.value];
+                      handleToggle(newValues);
+                    }}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all duration-200 ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="mr-3 flex-shrink-0">
+                        {React.createElement(option.icon, { 
+                          className: `w-5 h-5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}` 
+                        })}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">{option.label}</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Freitextfeld für "Sonstiges" */}
+            {showOtherInput && (
+              <SimpleTextInput
+                value={otherText}
+                onChange={handleOtherTextChange}
+                placeholder="Beschreibe hier deinen Grund..."
+                label="Bitte beschreibe deinen Grund genauer:"
+                rows={3}
+              />
+            )}
+
+            <div className="flex justify-between">
+              <button
+                onClick={prevStep}
+                className="flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Zurück
+              </button>
+              <button
+                onClick={() => nextStep()}
+                disabled={selectedValues.length === 0 || (showOtherInput && !otherText.trim())}
+                className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all ${
+                  selectedValues.length > 0 && (!showOtherInput || otherText.trim())
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Weiter
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </SurveyContainer>
+      </div>
+    );
+  };
 
   // Wellbeing Slider mit modularen Komponenten
   const WellbeingStep = () => {
@@ -431,16 +561,16 @@ function App() {
           title="Was willst du verbessern?"
           subtitle="Wähle alle Bereiche aus, an denen du arbeiten möchtest."
           options={[
-            { value: 'work_stress', label: 'Stress besser bewältigen' },
-            { value: 'sleep_quality', label: 'Schlafqualität verbessern' },
-            { value: 'anxiety_reduction', label: 'Ängste reduzieren' },
-            { value: 'self_confidence', label: 'Selbstbewusstsein stärken' },
-            { value: 'relationships', label: 'Beziehungen verbessern' },
-            { value: 'focus_productivity', label: 'Fokus & Produktivität steigern' },
-            { value: 'emotional_balance', label: 'Emotionale Balance finden' },
-            { value: 'life_direction', label: 'Lebensziele klären' },
-            { value: 'mindfulness', label: 'Achtsamkeit entwickeln' },
-            { value: 'already_good', label: 'Bin eigentlich zufrieden!' }
+            { value: 'work_stress', label: 'Stress besser bewältigen', icon: Zap },
+            { value: 'sleep_quality', label: 'Schlafqualität verbessern', icon: Moon },
+            { value: 'anxiety_reduction', label: 'Ängste reduzieren', icon: ShieldAlert },
+            { value: 'self_confidence', label: 'Selbstbewusstsein stärken', icon: TrendingUp },
+            { value: 'relationships', label: 'Beziehungen verbessern', icon: MessageSquare },
+            { value: 'focus_productivity', label: 'Fokus & Produktivität steigern', icon: Focus },
+            { value: 'emotional_balance', label: 'Emotionale Balance finden', icon: Smile },
+            { value: 'life_direction', label: 'Lebensziele klären', icon: Target },
+            { value: 'mindfulness', label: 'Achtsamkeit entwickeln', icon: Flower },
+            { value: 'already_good', label: 'Bin eigentlich zufrieden!', icon: CheckCircle }
           ]}
           selectedValues={answers.improvements || []}
           onToggle={(values) => updateAnswer('improvements', values)}
@@ -454,58 +584,238 @@ function App() {
   );
 
   // Support Präferenzen mit modularen Komponenten
-  const SupportStep = () => (
-    <div>
-      <SurveyContainer currentStep={11} totalSteps={13}>
-        <MultipleChoiceQuestion
-          title="Was würde dich am meisten unterstützen?"
-          subtitle="Wähle alle Situationen aus, in denen du dir Unterstützung wünschst."
-          options={[
-            { value: 'preventive', label: 'Präventive Begleitung nach Bedarf' },
-            { value: 'early_stress', label: 'Wenn ich merke, dass Stress aufkommt' },
-            { value: 'sleepless', label: 'Nachts, wenn ich nicht schlafen kann' },
-            { value: 'daily_checkin', label: 'Als täglicher Check-in zur Selbstreflexion' },
-            { value: 'before_talking', label: 'Beim warten auf Theraphie' },
-            { value: 'learning', label: 'Um mehr über mentale Gesundheit zu lernen' },
-            { value: 'self_care', label: 'Zur Selbstfürsorge und persönlichen Entwicklung' },
-            { value: 'none', label: 'Eigentlich in keiner' }
-          ]}
-          selectedValues={answers.support || []}
-          onToggle={(values) => updateAnswer('support', values)}
-          minSelections={1}
-          onNext={() => nextStep()}
-          onBack={prevStep}
-          exclusiveOptions={['none']}
-        />
-      </SurveyContainer>
-    </div>
-  );
+  const SupportStep = () => {
+    const [otherText, setOtherText] = React.useState(answers.support_other || '');
+    const selectedValues = answers.support || [];
+    const showOtherInput = selectedValues.includes('other');
+
+    const handleToggle = (values) => {
+      updateAnswer('support', values);
+      if (!values.includes('other')) {
+        // Wenn "Sonstiges" abgewählt wird, den Text löschen
+        setOtherText('');
+        updateAnswer('support_other', '');
+      }
+    };
+
+    const handleOtherTextChange = (value) => {
+      setOtherText(value);
+      updateAnswer('support_other', value);
+    };
+
+    return (
+      <div>
+        <SurveyContainer currentStep={11} totalSteps={13}>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Was würde dich am meisten unterstützen?</h1>
+            <p className="text-gray-600 mb-8">Wähle alle Situationen aus, in denen du dir Unterstützung wünschst.</p>
+            
+            <div className="space-y-3 mb-8">
+              {[
+                { value: 'preventive', label: 'Präventive Begleitung nach Bedarf', icon: ShieldIcon },
+                { value: 'early_stress', label: 'Wenn ich merke, dass Stress aufkommt', icon: AlertTriangle },
+                { value: 'sleepless', label: 'Nachts, wenn ich nicht schlafen kann', icon: MoonIcon },
+                { value: 'daily_checkin', label: 'Als täglicher Check-in zur Selbstreflexion', icon: CheckSquare },
+                { value: 'before_talking', label: 'Beim warten auf Theraphie', icon: Hourglass },
+                { value: 'learning', label: 'Um mehr über mentale Gesundheit zu lernen', icon: BookOpen },
+                { value: 'self_care', label: 'Zur Selbstfürsorge und persönlichen Entwicklung', icon: Flower },
+                { value: 'none', label: 'Eigentlich in keiner', icon: UserMinus },
+                { value: 'other', label: 'Sonstiges', icon: Edit }
+              ].map((option) => {
+                const isSelected = selectedValues.includes(option.value);
+                const isDisabled = !isSelected && selectedValues.includes('none') && option.value !== 'none';
+                
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      let newValues;
+                      if (option.value === 'none') {
+                        // Wenn "none" gewählt wird, nur "none" auswählen
+                        newValues = isSelected ? [] : ['none'];
+                      } else if (isSelected) {
+                        // Option abwählen
+                        newValues = selectedValues.filter(v => v !== option.value);
+                      } else {
+                        // Option hinzufügen und "none" entfernen falls vorhanden
+                        newValues = [...selectedValues.filter(v => v !== 'none'), option.value];
+                      }
+                      handleToggle(newValues);
+                    }}
+                    disabled={isDisabled}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all duration-200 ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : isDisabled
+                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="mr-3 flex-shrink-0">
+                        {React.createElement(option.icon, { 
+                          className: `w-5 h-5 ${
+                            isSelected 
+                              ? 'text-blue-600' 
+                              : isDisabled 
+                              ? 'text-gray-400' 
+                              : 'text-gray-500'
+                          }` 
+                        })}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">{option.label}</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Freitextfeld für "Sonstiges" */}
+            {showOtherInput && (
+              <SimpleTextInput
+                value={otherText}
+                onChange={handleOtherTextChange}
+                placeholder="Beschreibe hier, in welcher Situation du dir Unterstützung wünschst..."
+                label="Bitte beschreibe deine Situation genauer:"
+                rows={3}
+              />
+            )}
+
+            <div className="flex justify-between">
+              <button
+                onClick={prevStep}
+                className="flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Zurück
+              </button>
+              <button
+                onClick={() => nextStep()}
+                disabled={selectedValues.length === 0 || (showOtherInput && !otherText.trim())}
+                className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all ${
+                  selectedValues.length > 0 && (!showOtherInput || otherText.trim())
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Weiter
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </SurveyContainer>
+      </div>
+    );
+  };
 
   // App Boundaries mit modularen Komponenten
-  const AppBoundariesStep = () => (
-    <div>
-      <SurveyContainer currentStep={12} totalSteps={13}>
-        <MultipleChoiceQuestion
-          title="Was darf die App auf KEINEN Fall machen?"
-          subtitle="Wähle alle Punkte aus, die für dich absolute No-Gos sind."
-          options={[
-            { value: 'fake_therapist', label: 'Sich für einen echten Therapeut ausgeben' },
-            { value: 'patronizing', label: 'Mich bevormunden' },
-            { value: 'generic_responses', label: 'Zu generisch antworten ("Ich verstehe dich...")' },
-            { value: 'trivialize_problems', label: 'Wichtige Probleme bagatellisieren' },
-            { value: 'push_notifications', label: 'Mich an Dinge erinnern' },
-            { value: 'share_data', label: 'Meine Daten mit Dritten teilen' },
-            { value: 'replace_human_help', label: 'Professionelle Hilfe komplett ersetzen' }
-          ]}
-          selectedValues={answers.app_boundaries || []}
-          onToggle={(values) => updateAnswer('app_boundaries', values)}
-          minSelections={1}
-          onNext={() => nextStep()}
-          onBack={prevStep}
-        />
-      </SurveyContainer>
-    </div>
-  );
+  const AppBoundariesStep = () => {
+    const [otherText, setOtherText] = React.useState(answers.app_boundaries_other || '');
+    const selectedValues = answers.app_boundaries || [];
+    const showOtherInput = selectedValues.includes('other');
+
+    const handleToggle = (values) => {
+      updateAnswer('app_boundaries', values);
+      if (!values.includes('other')) {
+        // Wenn "Sonstiges" abgewählt wird, den Text löschen
+        setOtherText('');
+        updateAnswer('app_boundaries_other', '');
+      }
+    };
+
+    const handleOtherTextChange = (value) => {
+      setOtherText(value);
+      updateAnswer('app_boundaries_other', value);
+    };
+
+    return (
+      <div>
+        <SurveyContainer currentStep={12} totalSteps={13}>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-4">Was darf die App auf KEINEN Fall machen?</h1>
+            <p className="text-gray-600 mb-8">Wähle alle Punkte aus, die für dich absolute No-Gos sind.</p>
+            
+            <div className="space-y-3 mb-8">
+              {[
+                { value: 'fake_therapist', label: 'Sich für einen echten Therapeut ausgeben', icon: UserX },
+                { value: 'patronizing', label: 'Mich bevormunden', icon: Ban },
+                { value: 'generic_responses', label: 'Zu generisch antworten ("Ich verstehe dich...")', icon: Bot },
+                { value: 'trivialize_problems', label: 'Wichtige Probleme bagatellisieren', icon: AlertCircle },
+                { value: 'push_notifications', label: 'Mich an Dinge erinnern', icon: Bell },
+                { value: 'share_data', label: 'Meine Daten mit Dritten teilen', icon: Share },
+                { value: 'replace_human_help', label: 'Professionelle Hilfe komplett ersetzen', icon: Hospital },
+                { value: 'other', label: 'Sonstiges', icon: Edit }
+              ].map((option) => {
+                const isSelected = selectedValues.includes(option.value);
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      const newValues = isSelected 
+                        ? selectedValues.filter(v => v !== option.value)
+                        : [...selectedValues, option.value];
+                      handleToggle(newValues);
+                    }}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all duration-200 ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <div className="mr-3 flex-shrink-0">
+                        {React.createElement(option.icon, { 
+                          className: `w-5 h-5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}` 
+                        })}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold">{option.label}</div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Freitextfeld für "Sonstiges" */}
+            {showOtherInput && (
+              <SimpleTextInput
+                value={otherText}
+                onChange={handleOtherTextChange}
+                placeholder="Beschreibe hier, was die App auf keinen Fall machen sollte..."
+                label="Bitte beschreibe dein No-Go genauer:"
+                rows={3}
+              />
+            )}
+
+            <div className="flex justify-between">
+              <button
+                onClick={prevStep}
+                className="flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Zurück
+              </button>
+              <button
+                onClick={() => nextStep()}
+                disabled={selectedValues.length === 0 || (showOtherInput && !otherText.trim())}
+                className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all ${
+                  selectedValues.length > 0 && (!showOtherInput || otherText.trim())
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Weiter
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </SurveyContainer>
+      </div>
+    );
+  };
 
   // Purchase mit modularen Komponenten
   const PurchaseStep = () => (
