@@ -30,7 +30,8 @@ import {
   MultipleChoiceQuestion, 
   EmailInputQuestion, 
   StaticPageQuestion,
-  SliderQuestion 
+  SliderQuestion,
+  NumberScaleQuestion 
 } from './components/SurveyComponents';
 import { addToWaitlist, saveSurveyData, savePartialSurvey, loadPartialSurvey, clearPartialSurvey } from './config/supabase';
 
@@ -169,59 +170,59 @@ function App() {
 
   // Enhanced Landing Component mit modularen Komponenten
   const LandingPage = () => (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-2 sm:p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4 sm:p-6 md:p-8">
       <div className="w-full max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 md:p-10">
           {/* Content */}
           <div className="text-center">
-            {/* Hero Section - Ultra kompakt für kleine Bildschirme */}
-            <div className="mb-4 sm:mb-6 md:mb-8">
-              <div className="flex justify-center mb-2 sm:mb-4">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 sm:p-3 md:p-4 rounded-full">
-                  <Brain className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 text-white" />
+            {/* Hero Section - Mehr Platz für mobile */}
+            <div className="mb-8 sm:mb-10 md:mb-12">
+              <div className="flex justify-center mb-6 sm:mb-8">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-4 md:p-5 rounded-full">
+                  <Brain className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" />
                 </div>
               </div>
               
-              <h1 className="text-xl sm:text-2xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 md:mb-4 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-5 md:mb-6 leading-tight">
                 Willkommen bei MindGuard
               </h1>
               
-              <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-3 sm:mb-4 md:mb-6 px-2">
+              <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-6 sm:mb-8 md:mb-10 px-2 leading-relaxed">
                 Entdecke deinen persönlichen, modulbasierten psychologischen Assistenten für präventive Betreuung und mentales Wohlbefinden.
               </p>
             </div>
             
-            {/* Features Grid - Ultra kompakt */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
-              <div className="bg-blue-50 p-3 sm:p-4 md:p-6 rounded-xl text-center">
-                <div className="bg-blue-100 p-1.5 sm:p-2 md:p-3 rounded-full w-fit mx-auto mb-2 sm:mb-3 md:mb-4">
-                  <Shield className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600" />
+            {/* Features Grid - Mehr Platz für mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10 md:mb-12">
+              <div className="bg-blue-50 p-4 sm:p-5 md:p-6 rounded-xl text-center">
+                <div className="bg-blue-100 p-2 sm:p-3 md:p-4 rounded-full w-fit mx-auto mb-3 sm:mb-4 md:mb-5">
+                  <Shield className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-blue-600" />
                 </div>
-                <h3 className="font-semibold mb-1 text-gray-900 text-xs sm:text-sm md:text-base">Präventive Hilfe</h3>
-                <p className="text-xs md:text-sm text-gray-600">
+                <h3 className="font-semibold mb-2 text-gray-900 text-sm sm:text-base md:text-lg">Präventive Hilfe</h3>
+                <p className="text-sm md:text-base text-gray-600 leading-relaxed">
                   Frühzeitige Erkennung von Stresssignalen
                 </p>
               </div>
               
-              <div className="bg-green-50 p-3 sm:p-4 md:p-6 rounded-xl text-center">
-                <div className="bg-green-100 p-1.5 sm:p-2 md:p-3 rounded-full w-fit mx-auto mb-2 sm:mb-3 md:mb-4">
-                  <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" />
+              <div className="bg-green-50 p-4 sm:p-5 md:p-6 rounded-xl text-center">
+                <div className="bg-green-100 p-2 sm:p-3 md:p-4 rounded-full w-fit mx-auto mb-3 sm:mb-4 md:mb-5">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-green-600" />
                 </div>
-                <h3 className="font-semibold mb-1 text-gray-900 text-xs sm:text-sm md:text-base">Modulbasiert</h3>
-                <p className="text-xs md:text-sm text-gray-600">
+                <h3 className="font-semibold mb-2 text-gray-900 text-sm sm:text-base md:text-lg">Modulbasiert</h3>
+                <p className="text-sm md:text-base text-gray-600 leading-relaxed">
                   Verschiedene Module für deine Bedürfnisse
                 </p>
               </div>
             </div>
 
-            {/* Button */}
-            <div className="flex justify-end">
+            {/* Button - Mehr Platz für mobile */}
+            <div className="flex justify-center mt-6 sm:mt-8">
               <button
                 onClick={() => nextStep()}
-                className="w-full sm:w-auto flex items-center justify-center px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl text-sm sm:text-base"
+                className="w-full sm:w-auto flex items-center justify-center px-8 sm:px-10 py-4 sm:py-4 rounded-xl font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl text-base sm:text-lg min-w-[200px]"
               >
                 Jetzt starten
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight className="ml-3 h-5 w-5" />
               </button>
             </div>
           </div>

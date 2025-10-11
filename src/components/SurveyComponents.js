@@ -377,7 +377,95 @@ export const StaticPageQuestion = ({
   </div>
 );
 
-// Slider Question Component
+// Number Scale Question Component (Ersatz für Slider)
+export const NumberScaleQuestion = ({
+  title,
+  subtitle,
+  min = 1,
+  max = 10,
+  value,
+  onChange,
+  onNext,
+  onBack,
+  showBack = true,
+  nextButtonText = "Weiter",
+  leftLabel = "",
+  rightLabel = ""
+}) => {
+  const numbers = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+  
+  return (
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800 mb-4">{title}</h1>
+      {subtitle && <p className="text-gray-600 mb-8">{subtitle}</p>}
+      
+      <div className="mb-8">
+        {/* Labels */}
+        {(leftLabel || rightLabel) && (
+          <div className="flex justify-between text-sm text-gray-500 mb-4">
+            <span>{leftLabel}</span>
+            <span>{rightLabel}</span>
+          </div>
+        )}
+        
+        {/* Number Scale */}
+        <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 sm:gap-3 mb-8">
+          {numbers.map((number) => (
+            <button
+              key={number}
+              onClick={() => onChange(number)}
+              className={`
+                aspect-square flex items-center justify-center text-lg font-semibold rounded-lg
+                border-2 transition-all duration-200 touch-manipulation
+                ${value === number 
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg transform scale-105' 
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                }
+              `}
+            >
+              {number}
+            </button>
+          ))}
+        </div>
+        
+        {/* Current Selection Display */}
+        {value && (
+          <div className="text-center mb-6">
+            <div className="inline-block bg-blue-100 px-4 py-2 rounded-full">
+              <span className="text-sm text-blue-600">Gewählt: <strong>{value}</strong></span>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Navigation Buttons */}
+      <div className="flex justify-between items-center">
+        {showBack && (
+          <button
+            onClick={onBack}
+            className="px-6 py-3 text-gray-600 hover:text-gray-800 font-medium transition-colors"
+          >
+            ← Zurück
+          </button>
+        )}
+        
+        <button
+          onClick={onNext}
+          disabled={!value}
+          className={`px-6 py-3 rounded-lg font-semibold transition-colors ml-auto
+            ${value 
+              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+        >
+          {nextButtonText}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Slider Question Component - jetzt als Wrapper für NumberScaleQuestion
 export const SliderQuestion = ({
   title,
   subtitle,
@@ -392,144 +480,18 @@ export const SliderQuestion = ({
   leftLabel = "",
   rightLabel = ""
 }) => (
-  <div>
-    <h1 className="text-3xl font-bold text-gray-800 mb-4">{title}</h1>
-    {subtitle && <p className="text-gray-600 mb-8">{subtitle}</p>}
-    
-    <div className="mb-8">
-      {/* Current Value Display */}
-      <div className="text-center mb-6">
-        <div className="inline-block bg-blue-100 px-6 py-3 rounded-full">
-          <span className="text-2xl font-bold text-blue-600">{value}</span>
-        </div>
-      </div>
-      
-      {/* Slider */}
-      <div className="relative mb-4 py-4">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value))}
-          className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider touch-manipulation"
-          style={{
-            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((value - min) / (max - min)) * 100}%, #e5e7eb ${((value - min) / (max - min)) * 100}%, #e5e7eb 100%)`
-          }}
-        />
-        
-        {/* Custom Slider Styles */}
-        <style jsx>{`
-          .slider {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            outline: none;
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-          }
-          
-          .slider::-webkit-slider-thumb {
-            appearance: none;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: 4px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: all 0.2s ease;
-            position: relative;
-            z-index: 10;
-          }
-          
-          .slider::-webkit-slider-thumb:hover,
-          .slider::-webkit-slider-thumb:active {
-            transform: scale(1.2);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-          }
-          
-          .slider::-moz-range-thumb {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #3b82f6;
-            cursor: pointer;
-            border: 4px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transition: all 0.2s ease;
-            -moz-appearance: none;
-            appearance: none;
-          }
-          
-          .slider::-moz-range-thumb:hover,
-          .slider::-moz-range-thumb:active {
-            transform: scale(1.2);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-          }
-          
-          .slider::-webkit-slider-track {
-            height: 12px;
-            border-radius: 6px;
-          }
-          
-          .slider::-moz-range-track {
-            height: 12px;
-            border-radius: 6px;
-            background: transparent;
-            border: none;
-          }
-          
-          /* Touch-optimized styles for mobile */
-          @media (pointer: coarse) {
-            .slider::-webkit-slider-thumb {
-              width: 40px;
-              height: 40px;
-            }
-            
-            .slider::-moz-range-thumb {
-              width: 40px;
-              height: 40px;
-            }
-          }
-        `}</style>
-      </div>
-      
-      {/* Labels */}
-      {(leftLabel || rightLabel) && (
-        <div className="flex justify-between text-sm text-gray-500">
-          <span>{leftLabel}</span>
-          <span>{rightLabel}</span>
-        </div>
-      )}
-      
-      {/* Scale Numbers */}
-      <div className="flex justify-between text-xs text-gray-400 mt-2">
-        {Array.from({ length: max - min + 1 }, (_, i) => (
-          <span key={i}>{min + i}</span>
-        ))}
-      </div>
-    </div>
-
-    {/* Navigation Buttons */}
-    <div className={`flex ${showBack ? 'justify-between' : 'justify-end'} items-center`}>
-      {showBack && (
-        <button
-          onClick={onBack}
-          className="flex items-center px-6 py-3 rounded-xl font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Zurück
-        </button>
-      )}
-      
-      <button
-        onClick={onNext}
-        className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl ${!showBack ? 'ml-auto' : ''}`}
-      >
-        {nextButtonText}
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </button>
-    </div>
-  </div>
+  <NumberScaleQuestion
+    title={title}
+    subtitle={subtitle}
+    min={min}
+    max={max}
+    value={value}
+    onChange={onChange}
+    onNext={onNext}
+    onBack={onBack}
+    showBack={showBack}
+    nextButtonText={nextButtonText}
+    leftLabel={leftLabel}
+    rightLabel={rightLabel}
+  />
 );
