@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
-  Brain, Shield, Users, Star, CheckCircle,
+  Brain, Shield, Users, CheckCircle,
   // Alter Icons
   Baby, User, UserCheck, Crown, 
   // Geschlecht Icons
@@ -22,7 +22,7 @@ import {
   // Support Präferenzen Icons
   Shield as ShieldIcon, AlertTriangle, Moon as MoonIcon, CheckSquare, Hourglass, UserMinus,
   // App Grenzen Icons
-  UserX as FakeTherapist, Ban, Bot, AlertCircle, Bell, Share, Hospital
+  Ban, Bot, AlertCircle, Bell, Share, Hospital
 } from 'lucide-react';
 import { 
   SurveyContainer, 
@@ -32,25 +32,9 @@ import {
   StaticPageQuestion,
   SliderQuestion 
 } from './components/SurveyComponents';
-import { supabase, addToWaitlist, saveSurveyData, savePartialSurvey, loadPartialSurvey, clearPartialSurvey } from './config/supabase';
+import { addToWaitlist, saveSurveyData, savePartialSurvey, loadPartialSurvey, clearPartialSurvey } from './config/supabase';
 
-// Einfache statische Komponente für "Sonstiges" Textfelder - außerhalb der App Komponente definiert
-const SimpleTextInput = ({ value, onChange, placeholder, label, rows = 3 }) => {
-  return (
-    <div className="mb-8">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-      </label>
-      <textarea
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors resize-none"
-        rows={rows}
-      />
-    </div>
-  );
-};
+
 
 function App() {
   const [currentStep, setCurrentStep] = React.useState('landing');
@@ -59,6 +43,10 @@ function App() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showResumeDialog, setShowResumeDialog] = React.useState(false);
   const [partialSurvey, setPartialSurvey] = React.useState(null);
+  // Refs für uncontrolled Textfelder
+  const aiMotivationOtherRef = React.useRef(null);
+  const supportOtherRef = React.useRef(null);
+  const appBoundariesOtherRef = React.useRef(null);
 
   // Beim App-Start prüfen ob eine gespeicherte Umfrage existiert
   React.useEffect(() => {
@@ -105,6 +93,28 @@ function App() {
   };
 
   const nextStep = React.useCallback(async (targetStep = null) => {
+    // Speichere Freitext aus den Sonstiges-Feldern
+    if (currentStep === 'ai_motivation' && aiMotivationOtherRef.current) {
+      const textValue = aiMotivationOtherRef.current.value.trim();
+      if (textValue) {
+        updateAnswer('ai_motivation_other', textValue);
+      }
+    }
+    
+    if (currentStep === 'support' && supportOtherRef.current) {
+      const textValue = supportOtherRef.current.value.trim();
+      if (textValue) {
+        updateAnswer('support_other', textValue);
+      }
+    }
+    
+    if (currentStep === 'app_boundaries' && appBoundariesOtherRef.current) {
+      const textValue = appBoundariesOtherRef.current.value.trim();
+      if (textValue) {
+        updateAnswer('app_boundaries_other', textValue);
+      }
+    }
+    
     const stepOrder = ['landing', 'age', 'gender', 'demographics', 'relationship', 'wellbeing', 'stress', 'previous_support', 'ai_experience', 'ai_motivation', 'support', 'app_boundaries', 'purchase', 'success'];
     const currentIndex = stepOrder.indexOf(currentStep);
     
@@ -153,58 +163,7 @@ function App() {
     }
   }, [currentStep, answers.ai_experience]);
 
-  const handleEmailChange = React.useCallback((newEmail) => {
-    setEmail(newEmail);
-  }, []);
 
-  const handleFinalSubmit = async () => {
-    if (!email) return; // Safety check
-    
-    setIsSubmitting(true);
-    try {
-      // Beide Aktionen parallel ausführen
-      const surveyData = { ...answers, email };
-      
-      await Promise.all([
-        // E-Mail zur Warteliste hinzufügen
-        addToWaitlist(email, answers),
-        // Survey-Daten strukturiert speichern
-        saveSurveyData(surveyData)
-      ]);
-      
-      console.log('Survey Results submitted to Supabase:', surveyData);
-      
-      // Zwischenspeicherung löschen nach erfolgreichem Abschluss
-      await clearPartialSurvey();
-      
-      alert('Vielen Dank! Deine Antworten wurden erfolgreich gespeichert.');
-      setCurrentStep('thankyou');
-    } catch (error) {
-      console.error('Error submitting to Supabase:', error);
-      
-      // Lokale Speicherung als Fallback
-      try {
-        const surveyData = { ...answers, email };
-        const existingData = JSON.parse(localStorage.getItem('pendingSurveyResponses') || '[]');
-        existingData.push({
-          ...surveyData,
-          localId: Date.now(),
-          savedAt: new Date().toISOString()
-        });
-        localStorage.setItem('pendingSurveyResponses', JSON.stringify(existingData));
-        
-        alert('Deine Antworten wurden lokal gespeichert und werden automatisch synchronisiert, sobald die Verbindung wieder hergestellt ist.');
-      } catch (localError) {
-        console.error('Local storage failed:', localError);
-        alert('Es gab einen Fehler beim Speichern. Bitte versuche es erneut.');
-      }
-      
-      // Still proceed to thank you page
-      setCurrentStep('thankyou');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
 
 
@@ -290,6 +249,7 @@ function App() {
           onSelect={(value) => updateAnswer('age', value)}
           onNext={() => nextStep()}
           onBack={() => setCurrentStep('landing')}
+          requireSelection={true}
         />
       </SurveyContainer>
     </div>
@@ -311,6 +271,7 @@ function App() {
           onSelect={(value) => updateAnswer('gender', value)}
           onNext={() => nextStep()}
           onBack={() => nextStep('age')}
+          requireSelection={true}
         />
       </SurveyContainer>
     </div>
@@ -336,6 +297,7 @@ function App() {
           onSelect={(value) => updateAnswer('demographics', value)}
           onNext={() => nextStep()}
           onBack={() => nextStep('gender')}
+          requireSelection={true}
         />
       </SurveyContainer>
     </div>
@@ -359,6 +321,7 @@ function App() {
           onSelect={(value) => updateAnswer('relationship', value)}
           onNext={() => nextStep()}
           onBack={prevStep}
+          requireSelection={true}
         />
       </SurveyContainer>
     </div>
@@ -409,6 +372,7 @@ function App() {
           onSelect={(value) => updateAnswer('ai_experience', value)}
           onNext={() => nextStep()}
           onBack={prevStep}
+          requireSelection={true}
         />
       </SurveyContainer>
     </div>
@@ -416,22 +380,11 @@ function App() {
 
   // AI Motivation mit modularen Komponenten
   const AIMotivationStep = () => {
-    const [otherText, setOtherText] = React.useState(answers.ai_motivation_other || '');
     const selectedValues = answers.ai_motivation || [];
     const showOtherInput = selectedValues.includes('other');
 
     const handleToggle = (values) => {
       updateAnswer('ai_motivation', values);
-      if (!values.includes('other')) {
-        // Wenn "Sonstiges" abgewählt wird, den Text löschen
-        setOtherText('');
-        updateAnswer('ai_motivation_other', '');
-      }
-    };
-
-    const handleOtherTextChange = (value) => {
-      setOtherText(value);
-      updateAnswer('ai_motivation_other', value);
     };
 
     return (
@@ -488,13 +441,18 @@ function App() {
 
             {/* Freitextfeld für "Sonstiges" */}
             {showOtherInput && (
-              <SimpleTextInput
-                value={otherText}
-                onChange={handleOtherTextChange}
-                placeholder="Beschreibe hier deinen Grund..."
-                label="Bitte beschreibe deinen Grund genauer:"
-                rows={3}
-              />
+              <div className="mb-8">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bitte beschreibe deinen Grund genauer:
+                </label>
+                <textarea
+                  ref={aiMotivationOtherRef}
+                  defaultValue={answers.ai_motivation_other || ''}
+                  placeholder="Beschreibe hier deinen Grund..."
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                  rows={3}
+                />
+              </div>
             )}
 
             <div className="flex justify-between">
@@ -507,9 +465,9 @@ function App() {
               </button>
               <button
                 onClick={() => nextStep()}
-                disabled={selectedValues.length === 0 || (showOtherInput && !otherText.trim())}
+                disabled={selectedValues.length === 0}
                 className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all ${
-                  selectedValues.length > 0 && (!showOtherInput || otherText.trim())
+                  selectedValues.length > 0
                     ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
@@ -585,22 +543,11 @@ function App() {
 
   // Support Präferenzen mit modularen Komponenten
   const SupportStep = () => {
-    const [otherText, setOtherText] = React.useState(answers.support_other || '');
     const selectedValues = answers.support || [];
     const showOtherInput = selectedValues.includes('other');
 
     const handleToggle = (values) => {
       updateAnswer('support', values);
-      if (!values.includes('other')) {
-        // Wenn "Sonstiges" abgewählt wird, den Text löschen
-        setOtherText('');
-        updateAnswer('support_other', '');
-      }
-    };
-
-    const handleOtherTextChange = (value) => {
-      setOtherText(value);
-      updateAnswer('support_other', value);
     };
 
     return (
@@ -674,13 +621,18 @@ function App() {
 
             {/* Freitextfeld für "Sonstiges" */}
             {showOtherInput && (
-              <SimpleTextInput
-                value={otherText}
-                onChange={handleOtherTextChange}
-                placeholder="Beschreibe hier, in welcher Situation du dir Unterstützung wünschst..."
-                label="Bitte beschreibe deine Situation genauer:"
-                rows={3}
-              />
+              <div className="mb-8">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bitte beschreibe deine Situation genauer:
+                </label>
+                <textarea
+                  ref={supportOtherRef}
+                  defaultValue={answers.support_other || ''}
+                  placeholder="Beschreibe hier, in welcher Situation du dir Unterstützung wünschst..."
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                  rows={3}
+                />
+              </div>
             )}
 
             <div className="flex justify-between">
@@ -693,9 +645,9 @@ function App() {
               </button>
               <button
                 onClick={() => nextStep()}
-                disabled={selectedValues.length === 0 || (showOtherInput && !otherText.trim())}
+                disabled={selectedValues.length === 0}
                 className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all ${
-                  selectedValues.length > 0 && (!showOtherInput || otherText.trim())
+                  selectedValues.length > 0
                     ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
@@ -712,22 +664,11 @@ function App() {
 
   // App Boundaries mit modularen Komponenten
   const AppBoundariesStep = () => {
-    const [otherText, setOtherText] = React.useState(answers.app_boundaries_other || '');
     const selectedValues = answers.app_boundaries || [];
     const showOtherInput = selectedValues.includes('other');
 
     const handleToggle = (values) => {
       updateAnswer('app_boundaries', values);
-      if (!values.includes('other')) {
-        // Wenn "Sonstiges" abgewählt wird, den Text löschen
-        setOtherText('');
-        updateAnswer('app_boundaries_other', '');
-      }
-    };
-
-    const handleOtherTextChange = (value) => {
-      setOtherText(value);
-      updateAnswer('app_boundaries_other', value);
     };
 
     return (
@@ -746,18 +687,30 @@ function App() {
                 { value: 'push_notifications', label: 'Mich an Dinge erinnern', icon: Bell },
                 { value: 'share_data', label: 'Meine Daten mit Dritten teilen', icon: Share },
                 { value: 'replace_human_help', label: 'Professionelle Hilfe komplett ersetzen', icon: Hospital },
+                { value: 'none', label: 'Keine besonderen No-Gos', icon: CheckCircle },
                 { value: 'other', label: 'Sonstiges', icon: Edit }
               ].map((option) => {
                 const isSelected = selectedValues.includes(option.value);
+                const isDisabled = !isSelected && selectedValues.includes('none') && option.value !== 'none';
+                
                 return (
                   <button
                     key={option.value}
                     onClick={() => {
-                      const newValues = isSelected 
-                        ? selectedValues.filter(v => v !== option.value)
-                        : [...selectedValues, option.value];
+                      let newValues;
+                      if (option.value === 'none') {
+                        // Wenn "none" gewählt wird, nur "none" auswählen
+                        newValues = isSelected ? [] : ['none'];
+                      } else if (isSelected) {
+                        // Option abwählen
+                        newValues = selectedValues.filter(v => v !== option.value);
+                      } else {
+                        // Option hinzufügen und "none" entfernen falls vorhanden
+                        newValues = [...selectedValues.filter(v => v !== 'none'), option.value];
+                      }
                       handleToggle(newValues);
                     }}
+                    disabled={isDisabled}
                     className={`w-full p-4 text-left rounded-xl border-2 transition-all duration-200 ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -781,13 +734,18 @@ function App() {
 
             {/* Freitextfeld für "Sonstiges" */}
             {showOtherInput && (
-              <SimpleTextInput
-                value={otherText}
-                onChange={handleOtherTextChange}
-                placeholder="Beschreibe hier, was die App auf keinen Fall machen sollte..."
-                label="Bitte beschreibe dein No-Go genauer:"
-                rows={3}
-              />
+              <div className="mb-8">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Bitte beschreibe dein No-Go genauer:
+                </label>
+                <textarea
+                  ref={appBoundariesOtherRef}
+                  defaultValue={answers.app_boundaries_other || ''}
+                  placeholder="Beschreibe hier, was die App auf keinen Fall machen sollte..."
+                  className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                  rows={3}
+                />
+              </div>
             )}
 
             <div className="flex justify-between">
@@ -800,9 +758,9 @@ function App() {
               </button>
               <button
                 onClick={() => nextStep()}
-                disabled={selectedValues.length === 0 || (showOtherInput && !otherText.trim())}
+                disabled={selectedValues.length === 0}
                 className={`flex items-center px-8 py-3 rounded-xl font-semibold transition-all ${
-                  selectedValues.length > 0 && (!showOtherInput || otherText.trim())
+                  selectedValues.length > 0
                     ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
