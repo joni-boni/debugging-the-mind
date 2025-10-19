@@ -803,11 +803,11 @@ function App() {
                   </li>
                   <li className="flex items-center">
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Verfügbar wann du es brauchst
+                    Verfügbar wenn du es brauchst
                   </li>
                   <li className="flex items-center">
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Psychologisch fundiert & validiert
+                    Von Psychologen entwickelt
                   </li>
                 </ul>
               </div>
